@@ -1,0 +1,9 @@
+[coverage:run]
+source = app
+core = sysmon
+concurrency = thread
+
+[coverage:report]
+omit =
+    */tests/*
+    */__pycache__/*

@@ -1,0 +1,34 @@
+> from pydantic import BaseModel, Field, field_validator, ConfigDict
+  
+> class ClientSchema(BaseModel):
+>     id: int
+>     login: str
+>     model_config = ConfigDict(from_attributes=True)
+  
+> class ClientCreateSchema(BaseModel):
+>     login: str = Field(min_length=3, max_length=50)
+>     password: str = Field(min_length=4, max_length=50)
+  
+>     @field_validator("password")
+>     @classmethod
+>     def validate_password_bytes(cls, v: str) -> str:
+!         if len(v.encode("utf-8")) > 72:
+!             raise ValueError("Пароль слишком длинный. Максимум 72 байта.")
+!         return v
+  
+> class LoginSchema(BaseModel):
+>     username: str
+>     password: str
+  
+> class UserCreateByAdminSchema(BaseModel):
+>     login: str = Field(min_length=3, max_length=50)
+>     password: str = Field(min_length=4, max_length=50)
+>     role: str
+  
+>     @field_validator("role")
+>     @classmethod
+>     def validate_role(cls, v: str) -> str:
+>         allowed = {"patient", "dentist", "manager", "admin"}
+>         if v not in allowed:
+!             raise ValueError(f"Роль должна быть одной из: {', '.join(allowed)}")
+>         return v

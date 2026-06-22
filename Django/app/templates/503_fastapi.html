@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сервис недоступен — 503</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #343a40;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            padding: 48px 56px;
+            max-width: 520px;
+            width: 100%;
+            text-align: center;
+        }
+        .icon { font-size: 56px; margin-bottom: 20px; }
+        h1 { font-size: 1.8rem; margin-bottom: 8px; color: #dc3545; }
+        .subtitle { color: #6c757d; margin-bottom: 28px; font-size: 1rem; }
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 28px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .info-box strong { display: block; margin-bottom: 6px; color: #856404; }
+        code {
+            background: #e9ecef;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.85rem;
+        }
+        .steps {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        .steps strong { display: block; margin-bottom: 8px; color: #0c5460; }
+        .steps ol { padding-left: 18px; }
+        .steps li { margin-bottom: 6px; line-height: 1.5; }
+        .refresh-btn {
+            display: inline-block;
+            margin-top: 28px;
+            padding: 10px 28px;
+            background: #0d6efd;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .refresh-btn:hover { background: #0b5ed7; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="icon">⚠️</div>
+    <h1>Сервис недоступен</h1>
+    <p class="subtitle">Стоматологическая система не может работать без подключения к API.</p>
+
+    <div class="info-box">
+        <strong>API-сервер не отвечает</strong>
+        URL: <code>{{ fastapi_url }}</code><br>
+        Все страницы заблокированы до восстановления соединения.
+    </div>
+
+    <div class="steps">
+        <strong>Как запустить API-сервер:</strong>
+        <ol>
+            <li>Откройте терминал в папке <code>Api</code></li>
+            <li>Выполните: <code>uvicorn app.main:main_app --reload</code></li>
+            <li>Убедитесь, что порт <code>8000</code> свободен</li>
+            <li>Нажмите «Обновить страницу» ниже</li>
+        </ol>
+    </div>
+
+    <a class="refresh-btn" href="{{ request.path }}">Обновить страницу</a>
+</div>
+<script>
+// Каждую секунду проверяем, не вернулся ли FastAPI. Как только он снова доступен —
+// автоматически перезагружаем страницу и возвращаем пользователя к данным.
+setInterval(function () {
+    fetch('/fastapi/ping/', {cache: 'no-store'})
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d.online) { location.reload(); } })
+        .catch(function () { /* API всё ещё недоступен — ждём дальше */ });
+}, 1000);
+</script>
+</body>
+</html>

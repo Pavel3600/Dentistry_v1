@@ -1,0 +1,41 @@
+# app/core/security.py
+from datetime import datetime, timedelta
+from jose import jwt, JWTError
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError
+from app.core.config import settings
+
+ph = PasswordHasher()
+
+def hash_password(password: str) -> str:
+    """Хеширование пароля с использованием Argon2"""
+    return ph.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """Проверка пароля"""
+    try:
+        ph.verify(hashed, plain)
+        return True
+    except (VerifyMismatchError, InvalidHashError):
+        return False
+
+def create_access_token(data: dict) -> str:
+    """Создание JWT access токена"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def create_refresh_token(data: dict) -> str:
+    """Создание JWT refresh токена (опционально)"""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=7)  # Refresh token живет 7 дней
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def decode_token(token: str) -> dict:
+    """Декодирование JWT токена"""
+    try:
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return {}

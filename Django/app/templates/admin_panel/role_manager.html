@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Управление ролями{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-user-tag"></i> Управление ролями пользователей</h2>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-list"></i> Список пользователей
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Логин</th>
+                    <th>Email</th>
+                    <th>Текущая роль</th>
+                    <th>Новая роль</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="{% if u.role == 'admin' %}table-danger{% elif u.role == 'manager' %}table-warning{% elif u.role == 'dentist' %}table-info{% else %}table-secondary{% endif %}">
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.username }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                        <span class="badge {% if u.role == 'admin' %}bg-danger{% elif u.role == 'manager' %}bg-warning text-dark{% elif u.role == 'dentist' %}bg-info{% else %}bg-secondary{% endif %}">
+                            {{ u.get_role_display }}
+                        </span>
+                    </td>
+                    <form method="post" action="{% url 'app:change_role' u.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <td>
+                            <select name="role" class="form-select form-select-sm">
+                                {% for role_value, role_name in roles %}
+                                <option value="{{ role_value }}" {% if u.role == role_value %}selected{% endif %}>
+                                    {{ role_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="fas fa-save"></i> Сохранить
+                            </button>
+                        </td>
+                    </form>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center">Нет пользователей</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-success text-white">
+        <i class="fas fa-plus-circle"></i> Создать нового пользователя
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'app:create_user_with_role' %}">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" name="username" class="form-control" placeholder="Логин" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="email" name="email" class="form-control" placeholder="Email" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="first_name" class="form-control" placeholder="Имя">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="last_name" class="form-control" placeholder="Фамилия">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <input type="password" name="password" class="form-control" placeholder="Пароль" required>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <select name="role" class="form-select">
+                        {% for role_value, role_name in roles %}
+                        <option value="{{ role_value }}">{{ role_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-user-plus"></i> Создать
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Быстрое переключение ролей для администратора -->
+<div class="card mt-4">
+    <div class="card-header bg-secondary text-white">
+        <i class="fas fa-exchange-alt"></i> Быстрое переключение ролей (Impersonation)
+    </div>
+    <div class="card-body">
+        <p>Войдите как другой пользователь (для администраторов):</p>
+        <select id="impersonateUser" class="form-select w-50 d-inline">
+            <option value="">-- Выберите пользователя --</option>
+            {% for u in users %}
+            <option value="{% url 'app:impersonate_user' u.id %}">{{ u.username }} ({{ u.get_role_display }})</option>
+            {% endfor %}
+        </select>
+        <button onclick="location.href=document.getElementById('impersonateUser').value" class="btn btn-warning">
+            <i class="fas fa-mask"></i> Войти как
+        </button>
+    </div>
+</div>
+
+<script>
+    // Обновление цвета строки при выборе роли (опционально)
+    document.querySelectorAll('select[name="role"]').forEach(select => {
+        select.addEventListener('change', function() {
+            let row = this.closest('tr');
+            let role = this.value;
+            row.className = '';
+            if (role === 'admin') row.classList.add('table-danger');
+            else if (role === 'manager') row.classList.add('table-warning');
+            else if (role === 'dentist') row.classList.add('table-info');
+            else row.classList.add('table-secondary');
+        });
+    });
+</script>
+{% endblock %}

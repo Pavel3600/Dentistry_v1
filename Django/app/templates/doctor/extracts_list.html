@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Мои выписки</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr><th>Дата создания</th><th>Пациент</th><th>Содержание</th><th>Действие</th></tr>
+        </thead>
+        <tbody>
+            {% for e in extracts %}
+            <tr>
+                <td>{{ e.created_at|date:"d.m.Y H:i" }}</td>
+                <td>{{ e.visit.patient.full_name }}</td>
+                <td>{{ e.content|truncatechars:100 }}</td>
+                <td>
+                    <a href="{% url 'app:download_extract' e.visit.pk %}" class="btn btn-sm btn-primary">Скачать</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center">Нет выписок</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<a href="{% url 'app:doctor_dashboard' %}" class="btn btn-secondary">Назад</a>
+{% endblock %}

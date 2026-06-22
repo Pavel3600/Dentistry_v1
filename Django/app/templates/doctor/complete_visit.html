@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Завершение приёма{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card card-custom p-4">
+      <h3 class="mb-1 text-teal"><i class="fas fa-check-circle"></i> Завершение приёма</h3>
+      <p class="text-muted">
+        Пациент: <strong>{{ patient.full_name|default:"—" }}</strong> ·
+        {{ appointment.datetime|date:"d.m.Y H:i" }}
+      </p>
+
+      <form method="post" action="{% url 'app:start_visit' appointment.id %}">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Жалобы / Анамнез</label>
+          <textarea name="anamnesis" class="form-control" rows="3" placeholder="Что беспокоит пациента?"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Результаты осмотра</label>
+          <textarea name="examination_results" class="form-control" rows="3" placeholder="Состояние полости рта..."></textarea>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Диагноз (МКБ)</label>
+            <input list="mkbDiagnoses" id="diagnosisText" class="form-control" placeholder="Код или название…">
+            <datalist id="mkbDiagnoses">
+              {% for d in diagnoses %}
+                <option data-id="{{ d.id }}" value="{{ d.code }} — {{ d.name }}"></option>
+              {% endfor %}
+            </datalist>
+            <input type="hidden" name="diagnosis" id="diagnosisId">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold">Зубная формула</label>
+            <input type="text" name="tooth_formula" class="form-control" placeholder="Например: 46, 47">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">План лечения</label>
+          <textarea name="treatment_plan" class="form-control" rows="3" placeholder="Что сделано / назначено"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Назначения / Рецепт</label>
+          <textarea name="prescription" class="form-control" rows="2" placeholder="Препараты, рекомендации"></textarea>
+        </div>
+
+        <div class="alert alert-warning small">
+          <i class="fas fa-exclamation-triangle"></i> После сохранения статус приёма станет «Завершён».
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Завершить и сохранить</button>
+          <a href="{% url 'app:appointment_detail' appointment.id %}" class="btn btn-outline-secondary">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+    var input = document.getElementById('diagnosisText');
+    var hidden = document.getElementById('diagnosisId');
+    var list = document.getElementById('mkbDiagnoses');
+    if (!input || !hidden || !list) return;
+    function sync() {
+        hidden.value = '';
+        for (var i = 0; i < list.options.length; i++) {
+            if (list.options[i].value === input.value) { hidden.value = list.options[i].dataset.id; break; }
+        }
+    }
+    input.addEventListener('change', sync);
+    input.addEventListener('input', sync);
+})();
+</script>
+{% endblock %}

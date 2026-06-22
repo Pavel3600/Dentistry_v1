@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Поиск посещений</h2>
+<form method="get" class="row g-3 mb-4">
+    {{ form.as_p }}
+    <div class="col-md-4">
+        <label>Врач</label>
+        <select name="doctor" class="form-control">
+            <option value="">Все</option>
+            {% for d in doctors %}
+                <option value="{{ d.id }}" {% if request.GET.doctor == d.id|stringformat:"s" %}selected{% endif %}>
+                    {{ d.user.get_full_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label>Услуга</label>
+        <select name="service" class="form-control">
+            <option value="">Все</option>
+            {% for s in services %}
+                <option value="{{ s.id }}" {% if request.GET.service == s.id|stringformat:"s" %}selected{% endif %}>
+                    {{ s.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-4 align-self-end">
+        <button type="submit" class="btn btn-primary">Искать</button>
+    </div>
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Пациент</th>
+            <th>Врач</th>
+            <th>Диагноз</th>
+            <th>Действие</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for v in visits %}
+        <tr>
+            <td>{{ v.visit_date.date }}</td>
+            <td>{{ v.patient.full_name }}</td>
+            <td>{{ v.doctor.user.get_full_name }}</td>
+            <td>{{ v.diagnosis }}</td>
+            <td>{% if v.patient_id %}<a href="{% url 'app:patient_history' v.patient_id %}" class="btn btn-sm btn-info">История</a>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center">Ничего не найдено</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

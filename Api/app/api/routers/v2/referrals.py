@@ -1,0 +1,50 @@
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import List, Optional
+
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.models.medical_models import Referral, Patient
+from app.schemas.medical_schemas import ReferralOut, ReferralCreate
+from app.core.roles import require_dentist
+from app.api.deps import PaginationParams
+
+router = APIRouter()
+
+@router.get("/", response_model=List[ReferralOut])
+async def get_referrals_paginated(
+    pagination: PaginationParams = Depends(),
+    patient_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    query = select(Referral)
+    if patient_id:
+        query = query.where(Referral.patient_id == patient_id)
+    result = await db.execute(query.offset(pagination.skip).limit(pagination.limit))
+    referrals = result.scalars().all()
+    return referrals
+
+@router.get("/{referral_id}", response_model=ReferralOut)
+async def get_referral(
+    referral_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    referral = await db.get(Referral, referral_id)
+    if not referral:
+        raise HTTPException(status_code=404, detail="Направление не найдено")
+    return referral
+
+@router.post("/", response_model=ReferralOut, status_code=status.HTTP_201_CREATED)
+async def create_referral(
+    data: ReferralCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    referral = Referral(doctor_id=current_user.id, **data.model_dump())
+    db.add(referral)
+    await db.commit()
+    await db.refresh(referral)
+    return referral

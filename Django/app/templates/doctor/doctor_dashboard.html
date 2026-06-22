@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Дневник врача{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Добро пожаловать, {{ doctor_name }}</h2>
+  <p>Сегодня: {{ today }}</p>
+
+  <h4>Приёмы сегодня ({{ today_appointments|length }})</h4>
+  <ul>
+    {% for appt in today_appointments %}
+      <li>{{ appt.datetime }} — пациент #{{ appt.patient_id }}</li>
+    {% empty %}
+      <li>Нет приёмов</li>
+    {% endfor %}
+  </ul>
+
+  <h4>Недавние визиты</h4>
+  <ul>
+    {% for visit in recent_visits %}
+      <li>{{ visit.visit_date }} — {{ visit.patient.full_name }}</li>
+    {% empty %}
+      <li>Нет визитов</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

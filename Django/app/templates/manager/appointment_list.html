@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Записи на приём{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-teal"><i class="fas fa-calendar-check"></i> Записи на приём</h2>
+    <a href="{% url 'app:appointment_create' %}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Новая запись
+    </a>
+</div>
+
+{# Фильтр по статусу #}
+<form method="get" class="mb-3 d-flex gap-2" style="max-width:420px">
+    <select name="status" class="form-select">
+        <option value="">Все статусы</option>
+        {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-outline-primary">Фильтр</button>
+</form>
+
+<div class="card card-custom">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Дата и время</th><th>Пациент</th><th>Врач</th><th>Статус</th><th style="min-width:330px">Действия</th></tr>
+            </thead>
+            <tbody>
+                {% for a in appointments %}
+                <tr>
+                    <td>{{ a.datetime|date:"d.m.Y H:i" }}</td>
+                    <td class="fw-bold">{{ a.patient_name }}</td>
+                    <td>{{ a.doctor_name }}</td>
+                    <td>
+                        {% if a.status == 'scheduled' %}<span class="badge bg-warning text-dark">Запланирован</span>
+                        {% elif a.status == 'completed' %}<span class="badge bg-success">Завершён</span>
+                        {% else %}<span class="badge bg-danger">Отменён</span>{% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1 align-items-center">
+                            {# Смена статуса #}
+                            <form method="post" action="{% url 'app:appointment_change_status' a.id %}" class="d-flex gap-1">
+                                {% csrf_token %}
+                                <select name="status" class="form-select form-select-sm" style="width:auto">
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if a.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary" title="Сменить статус">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                            </form>
+
+                            {# Отчёт о приёме (если есть визит) #}
+                            {% if a.visit_obj %}
+                                <a href="{% url 'app:visit_report' a.visit_obj.id %}" class="btn btn-sm btn-info text-white" title="Отчёт о приёме">
+                                    <i class="fas fa-file-medical"></i> Отчёт
+                                </a>
+                            {% endif %}
+
+                            {# Удаление #}
+                            <form method="post" action="{% url 'app:appointment_delete' a.id %}"
+                                  onsubmit="return confirm('Удалить запись безвозвратно?');" class="d-inline">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-danger" title="Удалить">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">Записей нет</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

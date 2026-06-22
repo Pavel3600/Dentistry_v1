@@ -1,0 +1,19 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block content %}
+
+<h2>Admin Panel</h2>
+
+<div class="dashboard">
+
+    <a href="{% url 'admin_panel:category_list' %}" class="card">
+        Category Table
+    </a>
+
+    <a href="{% url 'admin_panel:product_list' %}" class="card">
+        Product Table
+    </a>
+
+</div>
+
+{% endblock %}

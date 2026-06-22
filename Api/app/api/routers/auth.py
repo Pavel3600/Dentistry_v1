@@ -1,0 +1,107 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.schemas.client_schema import ClientSchema, ClientCreateSchema, UserCreateByAdminSchema
+from app.core.security import create_access_token, hash_password, verify_password, decode_token
+from app.core.roles import require_admin, require_can_create_user, ROLE_CREATION_PERMISSIONS
+from app.api.deps import get_current_user
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/auth", tags=["Аутентификация"])
+
+
+@router.post("/register", response_model=ClientSchema, status_code=201, summary="Регистрация нового пользователя")
+async def register(data: ClientCreateSchema, db: AsyncSession = Depends(get_db)):
+    """Регистрация нового пользователя с ролью 'patient'"""
+    result = await db.execute(select(Clients).where(Clients.login == data.login))
+    if result.scalar_one_or_none():
+        raise HTTPException(400, "Логин уже существует")
+    hashed = hash_password(data.password)
+    new_user = Clients(login=data.login, password=hashed, role="patient")
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return new_user
+
+
+@router.post("/login", summary="Вход в систему")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    """Аутентификация пользователя и получение JWT токена"""
+    result = await db.execute(select(Clients).where(Clients.login == form_data.username))
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(401, "Неверный логин или пароль")
+    token = create_access_token(data={"sub": str(user.id)})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=ClientSchema, summary="Информация о текущем пользователе")
+async def get_me(current_user: Clients = Depends(get_current_user)):
+    """Получить информацию о текущем авторизованном пользователе"""
+    return current_user
+
+
+@router.post("/logout", summary="Выход из системы")
+async def logout(response: Response):
+    """Очистить cookie с токеном"""
+    response.delete_cookie("access_token")
+    return {"message": "Вы вышли из системы"}
+
+
+@router.post("/admin/users", response_model=ClientSchema, status_code=201, tags=["Админ"], summary="Создание пользователя администратором")
+async def create_user_by_admin(
+    data: UserCreateByAdminSchema,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(get_current_user)
+):
+    """Создание нового пользователя с указанием роли.
+
+    Права по ролям:
+    - Admin: может создавать администраторов, менеджеров, врачей, пациентов
+    - Manager: может создавать врачей, пациентов
+    - Dentist: не может создавать пользователей
+    - Patient: не может создавать пользователей
+    """
+    # Проверка прав создания пользователя
+    allowed_roles = ROLE_CREATION_PERMISSIONS.get(current_user.role, [])
+    if data.role not in allowed_roles:
+        role_names = {
+            "admin": "администратора",
+            "manager": "менеджера",
+            "dentist": "врача",
+            "patient": "пациента"
+        }
+        raise HTTPException(
+            status_code=403,
+            detail=f"У вас нет прав на создание {role_names.get(data.role, data.role)}. Доступные роли: {', '.join(allowed_roles) or 'нет'}"
+        )
+
+    result = await db.execute(select(Clients).where(Clients.login == data.login))
+    if result.scalar_one_or_none():
+        raise HTTPException(400, "Логин уже существует")
+    hashed = hash_password(data.password)
+    new_user = Clients(login=data.login, password=hashed, role=data.role)
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return new_user
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh", response_model=dict, summary="Обновление токена")
+async def refresh_token(data: RefreshRequest):
+    """Обновить access токен по refresh токену"""
+    payload = decode_token(data.refresh_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Недействительный refresh токен")
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Неверный формат токена")
+    new_access_token = create_access_token(data={"sub": user_id})
+    return {"access_token": new_access_token, "token_type": "bearer"}

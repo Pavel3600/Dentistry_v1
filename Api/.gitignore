@@ -1,0 +1,55 @@
+# Bytecode и кэш Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Виртуальное окружение
+venv/
+env/
+ENV/
+venv
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Логи и БД
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Сгенерированные документы (Word, Excel, PDF)
+/output/
+*.docx
+*.xlsx
+*.pdf
+generated_*
+
+# Наряды, выписки (если сохраняются локально)
+/medical_docs/
+/work_orders/
+
+# Файлы IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Файлы отчётов тестов
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Временные файлы при загрузке
+/uploads/tmp/
+/tmp/
+
+# Конфиги с секретами (если есть отдельно)
+config.local.*
+secrets.*

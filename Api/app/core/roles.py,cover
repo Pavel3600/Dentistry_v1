@@ -1,0 +1,53 @@
+> from fastapi import Depends, HTTPException, status
+> from app.models.client_models import Clients
+> from app.api.deps import get_current_user
+  
+  # Иерархия ролей: чем выше число, тем больше прав
+> ROLE_HIERARCHY = {
+>     "patient": 0,      # Пациент
+>     "dentist": 1,      # Врач-стоматолог
+>     "manager": 2,      # Менеджер
+>     "admin": 3,        # Администратор
+> }
+  
+  # Какие роли может создавать каждая роль
+> ROLE_CREATION_PERMISSIONS = {
+>     "admin": ["admin", "manager", "dentist", "patient"],      # Администратор может создавать кого угодно
+>     "manager": ["dentist", "patient"],                         # Менеджер может создавать врачей и пациентов
+>     "dentist": [],                                              # Врач не может создавать никого
+>     "patient": [],                                              # Пациент не может создавать никого
+> }
+  
+> def require_role(required_role: str):
+>     async def role_checker(current_user: Clients = Depends(get_current_user)):
+!         if current_user.role != required_role and current_user.role != "admin":
+!             raise HTTPException(status_code=403, detail="Недостаточно прав")
+!         return current_user
+>     return role_checker
+  
+> require_admin = require_role("admin")
+> require_manager = require_role("manager")
+> require_dentist = require_role("dentist")
+  
+> async def require_manager_or_dentist(current_user: Clients = Depends(get_current_user)):
+>     if current_user.role not in ["manager", "dentist", "admin"]:
+!         raise HTTPException(status_code=403, detail="Недостаточно прав")
+>     return current_user
+  
+> async def require_can_create_user(target_role: str):
+>     """Проверяет, может ли текущий пользователь создавать пользователя с указанной ролью"""
+!     async def checker(current_user: Clients = Depends(get_current_user)):
+!         allowed_roles = ROLE_CREATION_PERMISSIONS.get(current_user.role, [])
+!         if target_role not in allowed_roles:
+!             role_name = {
+!                 "admin": "Администратора",
+!                 "manager": "Менеджера",
+!                 "dentist": "Врача",
+!                 "patient": "Пациента"
+!             }.get(target_role, target_role)
+!             raise HTTPException(
+!                 status_code=403,
+!                 detail=f"У вас нет прав на создание {role_name}. Только администратор может создавать администраторов."
+!             )
+!         return current_user
+!     return checker

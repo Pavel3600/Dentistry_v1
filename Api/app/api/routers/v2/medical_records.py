@@ -1,0 +1,53 @@
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from typing import List, Optional
+
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.models.medical_models import MedicalRecord, Patient
+from app.schemas.medical_schemas import MedicalRecordOut, MedicalRecordCreate
+from app.core.roles import require_dentist
+from app.api.deps import PaginationParams
+
+router = APIRouter()
+
+@router.get("/", response_model=List[MedicalRecordOut])
+async def get_medical_records_paginated(
+    pagination: PaginationParams = Depends(),
+    patient_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    query = select(MedicalRecord)
+    if patient_id:
+        query = query.where(MedicalRecord.patient_id == patient_id)
+    result = await db.execute(query.offset(pagination.skip).limit(pagination.limit))
+    records = result.scalars().all()
+    return records
+
+@router.get("/{record_id}", response_model=MedicalRecordOut)
+async def get_medical_record(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    record = await db.get(MedicalRecord, record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    return record
+
+@router.post("/", response_model=MedicalRecordOut, status_code=status.HTTP_201_CREATED)
+async def create_medical_record(
+    data: MedicalRecordCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_dentist)
+):
+    patient = await db.get(Patient, data.patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Пациент не найден")
+    record = MedicalRecord(doctor_id=current_user.id, **data.model_dump())
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record

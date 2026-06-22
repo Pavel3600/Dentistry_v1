@@ -1,0 +1,5 @@
+{% extends "admin_panel/base.html" %}
+{% block content %}
+<h1>Материалы</h1>
+<ul>{% for m in materials %}<li>{{ m.name }}</li>{% endfor %}</ul>
+{% endblock %}

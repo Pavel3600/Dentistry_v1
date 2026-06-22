@@ -1,0 +1,442 @@
+> """
+> Роутер для сущностей, ранее хранившихся только в Django:
+> Service, Material, Visit, Procedure, MaterialUsage,
+> AppointmentLog, Investigation, PatientMedicalInfo,
+> MedicalRecordExtract, VisitReport.
+> """
+> from fastapi import APIRouter, Depends, HTTPException, status, Query
+> from sqlalchemy.ext.asyncio import AsyncSession
+> from sqlalchemy import select
+> from typing import List, Optional
+  
+> from app.core.database import get_db
+> from app.models.client_models import Clients
+> from app.models.medical_models import (
+>     Service, Material, Visit, Procedure, MaterialUsage,
+>     AppointmentLog, Investigation, PatientMedicalInfo,
+>     MedicalRecordExtract, VisitReport,
+> )
+> from app.schemas.medical_schemas import (
+>     ServiceCreate, ServiceUpdate, ServiceOut,
+>     MaterialCreate, MaterialUpdate, MaterialOut,
+>     VisitCreate, VisitUpdate, VisitOut,
+>     ProcedureCreate, ProcedureOut,
+>     MaterialUsageCreate, MaterialUsageOut,
+>     AppointmentLogCreate, AppointmentLogOut,
+>     InvestigationCreate, InvestigationOut,
+>     PatientMedicalInfoCreate, PatientMedicalInfoUpdate, PatientMedicalInfoOut,
+>     MedicalRecordExtractCreate, MedicalRecordExtractOut,
+>     VisitReportCreate, VisitReportOut,
+> )
+> from app.core.roles import require_manager_or_dentist, require_manager, require_dentist, require_admin
+  
+> router = APIRouter()
+  
+  
+  # ==================== SERVICE ====================
+  
+> @router.get("/services/", response_model=List[ServiceOut], tags=["Services"])
+> async def get_services(
+>     skip: int = 0, limit: int = 100,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(Service).offset(skip).limit(limit))
+!     return result.scalars().all()
+  
+  
+> @router.get("/services/{service_id}", response_model=ServiceOut, tags=["Services"])
+> async def get_service(
+>     service_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     obj = await db.get(Service, service_id)
+!     if not obj:
+!         raise HTTPException(404, "Услуга не найдена")
+!     return obj
+  
+  
+> @router.post("/services/", response_model=ServiceOut, status_code=201, tags=["Services"])
+> async def create_service(
+>     data: ServiceCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = Service(**data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.put("/services/{service_id}", response_model=ServiceOut, tags=["Services"])
+> async def update_service(
+>     service_id: int, data: ServiceUpdate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = await db.get(Service, service_id)
+!     if not obj:
+!         raise HTTPException(404, "Услуга не найдена")
+!     for k, v in data.model_dump(exclude_none=True).items():
+!         setattr(obj, k, v)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.delete("/services/{service_id}", status_code=204, tags=["Services"])
+> async def delete_service(
+>     service_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = await db.get(Service, service_id)
+!     if not obj:
+!         raise HTTPException(404, "Услуга не найдена")
+!     await db.delete(obj)
+!     await db.commit()
+  
+  
+  # ==================== MATERIAL ====================
+  
+> @router.get("/materials/", response_model=List[MaterialOut], tags=["Materials"])
+> async def get_materials(
+>     skip: int = 0, limit: int = 100,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(Material).offset(skip).limit(limit))
+!     return result.scalars().all()
+  
+  
+> @router.get("/materials/{material_id}", response_model=MaterialOut, tags=["Materials"])
+> async def get_material(
+>     material_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     obj = await db.get(Material, material_id)
+!     if not obj:
+!         raise HTTPException(404, "Материал не найден")
+!     return obj
+  
+  
+> @router.post("/materials/", response_model=MaterialOut, status_code=201, tags=["Materials"])
+> async def create_material(
+>     data: MaterialCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = Material(**data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.put("/materials/{material_id}", response_model=MaterialOut, tags=["Materials"])
+> async def update_material(
+>     material_id: int, data: MaterialUpdate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = await db.get(Material, material_id)
+!     if not obj:
+!         raise HTTPException(404, "Материал не найден")
+!     for k, v in data.model_dump(exclude_none=True).items():
+!         setattr(obj, k, v)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.delete("/materials/{material_id}", status_code=204, tags=["Materials"])
+> async def delete_material(
+>     material_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager),
+> ):
+!     obj = await db.get(Material, material_id)
+!     if not obj:
+!         raise HTTPException(404, "Материал не найден")
+!     await db.delete(obj)
+!     await db.commit()
+  
+  
+  # ==================== VISIT ====================
+  
+> @router.get("/visits/", response_model=List[VisitOut], tags=["Visits"])
+> async def get_visits(
+>     skip: int = 0, limit: int = 50,
+>     patient_id: Optional[int] = Query(None),
+>     doctor_id: Optional[int] = Query(None),
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     q = select(Visit)
+!     if patient_id:
+!         q = q.where(Visit.patient_id == patient_id)
+!     if doctor_id:
+!         q = q.where(Visit.doctor_id == doctor_id)
+!     result = await db.execute(q.offset(skip).limit(limit))
+!     return result.scalars().all()
+  
+  
+> @router.get("/visits/{visit_id}", response_model=VisitOut, tags=["Visits"])
+> async def get_visit(
+>     visit_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     obj = await db.get(Visit, visit_id)
+!     if not obj:
+!         raise HTTPException(404, "Визит не найден")
+!     return obj
+  
+  
+> @router.get("/visits/by-appointment/{appointment_id}", response_model=VisitOut, tags=["Visits"])
+> async def get_visit_by_appointment(
+>     appointment_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(Visit).where(Visit.appointment_id == appointment_id))
+!     obj = result.scalar_one_or_none()
+!     if not obj:
+!         raise HTTPException(404, "Визит не найден")
+!     return obj
+  
+  
+> @router.post("/visits/", response_model=VisitOut, status_code=201, tags=["Visits"])
+> async def create_visit(
+>     data: VisitCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     existing = await db.execute(select(Visit).where(Visit.appointment_id == data.appointment_id))
+!     if existing.scalar_one_or_none():
+!         raise HTTPException(400, "Визит для этой записи уже существует")
+!     obj = Visit(**data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.put("/visits/{visit_id}", response_model=VisitOut, tags=["Visits"])
+> async def update_visit(
+>     visit_id: int, data: VisitUpdate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     obj = await db.get(Visit, visit_id)
+!     if not obj:
+!         raise HTTPException(404, "Визит не найден")
+!     for k, v in data.model_dump(exclude_none=True).items():
+!         setattr(obj, k, v)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== PROCEDURE ====================
+  
+> @router.get("/visits/{visit_id}/procedures", response_model=List[ProcedureOut], tags=["Procedures"])
+> async def get_procedures(
+>     visit_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(Procedure).where(Procedure.visit_id == visit_id))
+!     return result.scalars().all()
+  
+  
+> @router.post("/visits/{visit_id}/procedures", response_model=ProcedureOut, status_code=201, tags=["Procedures"])
+> async def create_procedure(
+>     visit_id: int, data: ProcedureCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     service = await db.get(Service, data.service_id)
+!     if not service:
+!         raise HTTPException(404, "Услуга не найдена")
+!     total_cost = service.cost * data.quantity
+!     obj = Procedure(visit_id=visit_id, total_cost=total_cost, **data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+> @router.delete("/procedures/{procedure_id}", status_code=204, tags=["Procedures"])
+> async def delete_procedure(
+>     procedure_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     obj = await db.get(Procedure, procedure_id)
+!     if not obj:
+!         raise HTTPException(404, "Процедура не найдена")
+!     await db.delete(obj)
+!     await db.commit()
+  
+  
+  # ==================== MATERIAL USAGE ====================
+  
+> @router.post("/procedures/{procedure_id}/materials", response_model=MaterialUsageOut, status_code=201, tags=["MaterialUsage"])
+> async def add_material_usage(
+>     procedure_id: int, data: MaterialUsageCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     material = await db.get(Material, data.material_id)
+!     if not material:
+!         raise HTTPException(404, "Материал не найден")
+!     cost = material.price_per_unit * data.quantity
+!     obj = MaterialUsage(procedure_id=procedure_id, cost=cost, **data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== APPOINTMENT LOG ====================
+  
+> @router.get("/appointment-logs/", response_model=List[AppointmentLogOut], tags=["AppointmentLog"])
+> async def get_appointment_logs(
+>     appointment_id: Optional[int] = Query(None),
+>     skip: int = 0, limit: int = 100,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     q = select(AppointmentLog)
+!     if appointment_id:
+!         q = q.where(AppointmentLog.appointment_id == appointment_id)
+!     result = await db.execute(q.offset(skip).limit(limit))
+!     return result.scalars().all()
+  
+  
+> @router.post("/appointment-logs/", response_model=AppointmentLogOut, status_code=201, tags=["AppointmentLog"])
+> async def create_appointment_log(
+>     data: AppointmentLogCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     obj = AppointmentLog(**data.model_dump(), changed_by_login=current_user.login)
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== INVESTIGATION ====================
+  
+> @router.get("/visits/{visit_id}/investigations", response_model=List[InvestigationOut], tags=["Investigations"])
+> async def get_investigations(
+>     visit_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(Investigation).where(Investigation.visit_id == visit_id))
+!     return result.scalars().all()
+  
+  
+> @router.post("/visits/{visit_id}/investigations", response_model=InvestigationOut, status_code=201, tags=["Investigations"])
+> async def create_investigation(
+>     visit_id: int, data: InvestigationCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     obj = Investigation(visit_id=visit_id, **data.model_dump())
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== PATIENT MEDICAL INFO ====================
+  
+> @router.get("/patient-medical-info/{patient_id}", response_model=PatientMedicalInfoOut, tags=["PatientMedicalInfo"])
+> async def get_patient_medical_info(
+>     patient_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(PatientMedicalInfo).where(PatientMedicalInfo.patient_id == patient_id))
+!     obj = result.scalar_one_or_none()
+!     if not obj:
+!         raise HTTPException(404, "Мед. информация не найдена")
+!     return obj
+  
+  
+> @router.put("/patient-medical-info/{patient_id}", response_model=PatientMedicalInfoOut, tags=["PatientMedicalInfo"])
+> async def upsert_patient_medical_info(
+>     patient_id: int, data: PatientMedicalInfoUpdate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     result = await db.execute(select(PatientMedicalInfo).where(PatientMedicalInfo.patient_id == patient_id))
+!     obj = result.scalar_one_or_none()
+!     if obj:
+!         for k, v in data.model_dump(exclude_none=True).items():
+!             setattr(obj, k, v)
+!     else:
+!         obj = PatientMedicalInfo(patient_id=patient_id, **data.model_dump(exclude_none=True))
+!         db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== MEDICAL RECORD EXTRACT ====================
+  
+> @router.get("/visits/{visit_id}/extracts", response_model=List[MedicalRecordExtractOut], tags=["Extracts"])
+> async def get_extracts(
+>     visit_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(MedicalRecordExtract).where(MedicalRecordExtract.visit_id == visit_id))
+!     return result.scalars().all()
+  
+  
+> @router.post("/visits/{visit_id}/extracts", response_model=MedicalRecordExtractOut, status_code=201, tags=["Extracts"])
+> async def create_extract(
+>     visit_id: int, data: MedicalRecordExtractCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_dentist),
+> ):
+!     obj = MedicalRecordExtract(visit_id=visit_id, content=data.content, file_path=data.file_path)
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj
+  
+  
+  # ==================== VISIT REPORT ====================
+  
+> @router.get("/visits/{visit_id}/reports", response_model=List[VisitReportOut], tags=["VisitReports"])
+> async def get_visit_reports(
+>     visit_id: int,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     result = await db.execute(select(VisitReport).where(VisitReport.visit_id == visit_id))
+!     return result.scalars().all()
+  
+  
+> @router.post("/visits/{visit_id}/reports", response_model=VisitReportOut, status_code=201, tags=["VisitReports"])
+> async def create_visit_report(
+>     visit_id: int, data: VisitReportCreate,
+>     db: AsyncSession = Depends(get_db),
+>     current_user: Clients = Depends(require_manager_or_dentist),
+> ):
+!     obj = VisitReport(visit_id=visit_id, author_login=current_user.login,
+!                       title=data.title, summary=data.summary,
+!                       recommendations=data.recommendations, complications=data.complications)
+!     db.add(obj)
+!     await db.commit()
+!     await db.refresh(obj)
+!     return obj

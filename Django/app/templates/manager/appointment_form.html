@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block title %}{{ title|default:"Новая запись" }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-header bg-primary text-white rounded-top-4 py-3">
+                <h4 class="mb-0 text-center">
+                    <i class="fas fa-calendar-plus me-2"></i>
+                    {{ title|default:"Новая запись на приём" }}
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Пациент -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user-injured text-teal me-1"></i> Пациент
+                        </label>
+                        <select id="select-patient" name="patient_id" placeholder="Выберите пациента..." required>
+                            <option value="">— выберите пациента —</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}"
+                                {% if form.patient_id.value|stringformat:"s" == p.id|stringformat:"s" %}selected{% endif %}>
+                                {{ p.full_name }}{% if p.phone %} ({{ p.phone }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.patient_id.errors %}
+                            <div class="text-danger small mt-1">{{ form.patient_id.errors.0 }}</div>
+                        {% endif %}
+                        {% if not patients %}
+                            <div class="form-text text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Нет пациентов. Сначала <a href="{% url 'app:patient_create' %}">добавьте пациента</a>.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Врач -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user-md text-teal me-1"></i> Врач
+                        </label>
+                        <select id="select-doctor" name="doctor_id" placeholder="Выберите врача..." required>
+                            <option value="">— выберите врача —</option>
+                            {% for d in doctors %}
+                            <option value="{{ d.id }}"
+                                {% if form.doctor_id.value|stringformat:"s" == d.id|stringformat:"s" %}selected{% endif %}>
+                                {{ d.login }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.doctor_id.errors %}
+                            <div class="text-danger small mt-1">{{ form.doctor_id.errors.0 }}</div>
+                        {% endif %}
+                        {% if not doctors %}
+                            <div class="form-text text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Нет врачей. Запустите <code>python scripts/seed_accounts.py</code> в папке Api/.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Дата и время -->
+                    <div class="mb-3">
+                        <label for="{{ form.datetime.id_for_label }}" class="form-label fw-bold">
+                            <i class="far fa-clock text-teal me-1"></i> Дата и время приёма
+                        </label>
+                        {{ form.datetime }}
+                        {% if form.datetime.errors %}
+                            <div class="text-danger small mt-1">{{ form.datetime.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill">
+                            <i class="fas fa-save me-2"></i> Сохранить запись
+                        </button>
+                        <a href="{% url 'app:appointment_list' %}" class="btn btn-outline-secondary rounded-pill">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .ts-wrapper .ts-control {
+        border-radius: 0.5rem !important;
+        padding: 0.65rem 1rem !important;
+        border: 1px solid #e2e8f0 !important;
+        font-size: 0.95rem;
+    }
+    .ts-wrapper.focus .ts-control,
+    .ts-wrapper .ts-control:focus {
+        border-color: #0d9488 !important;
+        box-shadow: 0 0 0 0.25rem rgba(13, 148, 136, 0.25) !important;
+    }
+    .ts-dropdown .option.active,
+    .ts-dropdown .option:hover {
+        background-color: #0d9488 !important;
+        color: white !important;
+    }
+    .ts-dropdown .option { padding: 8px 12px; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+    new TomSelect('#select-patient', {
+        placeholder: 'Введите имя пациента...',
+        searchField: ['text'],
+        maxOptions: 200,
+    });
+    new TomSelect('#select-doctor', {
+        placeholder: 'Введите имя врача...',
+        searchField: ['text'],
+        maxOptions: 100,
+    });
+</script>
+{% endblock %}

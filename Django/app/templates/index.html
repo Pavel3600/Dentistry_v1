@@ -1,0 +1,52 @@
+{% load static %}
+
+<header>
+    <div class="logo">
+        <img src="{% static 'images/logo.png' %}" alt="Логотип">
+    </div>
+
+    <div class="list-category">
+        <ul>
+            {% for i in categories %}
+            <li>
+                <a class="{% if request.resolver_match.kwargs.route_category == i.route_category %}active{% endif %}"
+                   href="{% url 'category_data' i.route_category %}">
+
+                    <div>
+                        <img src="{% static 'images/'|add:i.category_image %}" width="75" alt="{{ i.name_category }}">
+                        <div>{{ i.name_category }}</div>
+                    </div>
+
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</header>
+
+<main>
+    <div class="list-products">
+        <ul>
+
+            {% for i in products %}
+            <li>
+
+                <img src="{% static 'images/'|add:i.product_image %}" alt="{{ i.name_product }}">
+
+                <div>
+                    {{ i.name_product }}
+                    Б {{ i.proteins }}
+                    Ж {{ i.fats }}
+                    У {{ i.carbohydrates }}
+                    ккал {{ i.calories }}
+                    на 100 гр.
+                </div>
+
+                <a href="/">Add to cart</a>
+
+            </li>
+            {% endfor %}
+
+        </ul>
+    </div>
+</main>

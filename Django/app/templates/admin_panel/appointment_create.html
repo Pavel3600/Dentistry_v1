@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Новая запись (Админ){% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-header bg-primary text-white rounded-top-4 py-3">
+                <h4 class="mb-0 text-center"><i class="fas fa-calendar-plus me-2"></i> Новая запись (Админ)</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Выбор пациента -->
+                    <div class="mb-3">
+                        <label for="{{ form.patient_id.id_for_label }}" class="form-label fw-bold">
+                            <i class="fas fa-user-injured text-teal me-1"></i> {{ form.patient_id.label }}
+                        </label>
+                        {{ form.patient_id }}
+                        <div class="form-text">Выберите пациента из списка</div>
+                    </div>
+
+                    <!-- Выбор врача -->
+                    <div class="mb-3">
+                        <label for="{{ form.doctor_id.id_for_label }}" class="form-label fw-bold">
+                            <i class="fas fa-user-md text-teal me-1"></i> {{ form.doctor_id.label }}
+                        </label>
+                        {{ form.doctor_id }}
+                        <div class="form-text">Выберите стоматолога</div>
+                    </div>
+
+                    <!-- Дата и время -->
+                    <div class="mb-3">
+                        <label for="{{ form.datetime.id_for_label }}" class="form-label fw-bold">
+                            <i class="far fa-clock text-teal me-1"></i> {{ form.datetime.label }}
+                        </label>
+                        {{ form.datetime }}
+                        <div class="form-text">Нажмите на поле, чтобы открыть календарь</div>
+                    </div>
+
+                    <!-- Статус -->
+                    <div class="mb-4">
+                        <label for="{{ form.status.id_for_label }}" class="form-label fw-bold">
+                            <i class="fas fa-info-circle text-teal me-1"></i> {{ form.status.label }}
+                        </label>
+                        {{ form.status }}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill">
+                            <i class="fas fa-save me-2"></i> Сохранить запись
+                        </button>
+                        <a href="{% url 'app:appointment_list' %}" class="btn btn-outline-secondary rounded-pill">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-select, .form-control {
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: #0d9488;
+        box-shadow: 0 0 0 0.25rem rgba(13, 148, 136, 0.25);
+    }
+    label {
+        color: #475569;
+        font-size: 0.95rem;
+    }
+    .text-teal {
+        color: #0d9488 !important;
+    }
+</style>
+{% endblock %}

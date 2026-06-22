@@ -1,0 +1,111 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
+from typing import List
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.models.medical_models import (
+    Patient, Appointment, MedicalRecord, Study, Referral, WorkOrder,
+)
+from app.schemas.medical_schemas import PatientCreate, PatientUpdate, PatientOut, AppointmentCreate, AppointmentOut
+from app.core.roles import require_manager, require_manager_or_dentist, require_admin
+from app.services.patient_service import generate_card_number, delete_patient_cascade
+
+router = APIRouter(prefix="/manager", tags=["Manager"])
+
+
+@router.post("/patients", response_model=PatientOut, status_code=201)
+async def create_patient(
+    data: PatientCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager_or_dentist)
+):
+    user = await db.get(Clients, data.user_id)
+    if not user or user.role != "patient":
+        raise HTTPException(400, "Неверный user_id или пользователь не пациент")
+    existing = await db.execute(select(Patient).where(Patient.user_id == data.user_id))
+    if existing.scalar_one_or_none():
+        raise HTTPException(400, "Пациент уже привязан к этому пользователю")
+    payload = data.model_dump()
+    if not payload.get("card_number"):
+        payload["card_number"] = await generate_card_number(db)
+    patient = Patient(**payload)
+    db.add(patient)
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+@router.get("/patients/{patient_id}", response_model=PatientOut)
+async def get_patient(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager_or_dentist)
+):
+    patient = await db.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(404, "Пациент не найден")
+    return patient
+
+
+@router.put("/patients/{patient_id}", response_model=PatientOut)
+async def update_patient(
+    patient_id: int,
+    data: PatientUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager_or_dentist)
+):
+    patient = await db.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(404, "Пациент не найден")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(patient, key, value)
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+@router.delete("/patients/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_patient(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_admin)  # удаление пациента — только администратор
+):
+    patient = await db.get(Patient, patient_id)
+    if not patient:
+        raise HTTPException(404, "Пациент не найден")
+    await delete_patient_cascade(db, patient)
+    return None
+
+
+@router.post("/appointments", response_model=AppointmentOut)
+async def create_appointment(
+    data: AppointmentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager)
+):
+    patient = await db.get(Patient, data.patient_id)
+    if not patient:
+        raise HTTPException(404, "Пациент не найден")
+    doctor = await db.get(Clients, data.doctor_id)
+    if not doctor or doctor.role != "dentist":
+        raise HTTPException(400, "Врач не является стоматологом")
+    appointment = Appointment(**data.model_dump())
+    db.add(appointment)
+    await db.commit()
+    await db.refresh(appointment)
+    return appointment
+
+
+@router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_appointment(
+    appointment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager)
+):
+    appointment = await db.get(Appointment, appointment_id)
+    if not appointment:
+        raise HTTPException(404, "Запись не найдена")
+    appointment.status = "cancelled"
+    await db.commit()
+    return None

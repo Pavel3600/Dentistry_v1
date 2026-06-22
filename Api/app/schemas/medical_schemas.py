@@ -1,0 +1,277 @@
+from pydantic import BaseModel, ConfigDict, Field
+from datetime import datetime
+from typing import Optional
+
+# Базовый класс для всех Out-схем с правильной сериализацией datetime
+class OutBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True, json_encoders={datetime: lambda v: v.isoformat() if isinstance(v, datetime) else v})
+
+# ---------- Patient ----------
+class PatientBase(BaseModel):
+    full_name: str
+    birth_date: datetime
+    gender: str
+    phone: str
+    address: Optional[str] = None
+
+class PatientCreate(PatientBase):
+    card_number: Optional[str] = Field(None, description="Номер медицинской карты (генерируется, если не задан)")
+    user_id: int
+    full_name: str
+
+class PatientUpdate(BaseModel):
+    full_name: Optional[str] = None
+    birth_date: Optional[datetime] = None
+    gender: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+class PatientOut(PatientBase, OutBase):
+    id: int
+    card_number: str
+    user_id: int
+
+
+# ---------- Appointment ----------
+class AppointmentCreate(BaseModel):
+    patient_id: int
+    doctor_id: int
+    datetime: datetime
+
+class AppointmentOut(AppointmentCreate, OutBase):
+    id: int
+    status: str
+    created_at: datetime
+
+
+# ---------- MedicalRecord (базовая) ----------
+class MedicalRecordCreate(BaseModel):
+    patient_id: int
+    complaints: Optional[str] = None
+    anamnesis: Optional[str] = None
+    examination: Optional[str] = None
+    diagnosis: Optional[str] = None
+    prescriptions: Optional[str] = None
+    tooth_formula: Optional[str] = None
+    alert_info: Optional[str] = None
+
+class MedicalRecordOut(MedicalRecordCreate, OutBase):
+    id: int
+    doctor_id: int
+    visit_date: datetime
+
+
+# ---------- MedicalRecord (расширенная с МКБ-С-3) ----------
+class MedicalRecordCreateExtended(BaseModel):
+    patient_id: int
+    mkbs_code_id: Optional[int] = None
+    mkbs_code_str: Optional[str] = None
+    complaints: Optional[str] = None
+    anamnesis: Optional[str] = None
+    examination: Optional[str] = None
+    diagnosis: Optional[str] = None
+    prescriptions: Optional[str] = None
+    tooth_formula: Optional[str] = None
+    alert_info: Optional[str] = None
+
+
+# ---------- Study ----------
+class StudyCreate(BaseModel):
+    patient_id: int
+    study_type: str
+    result: Optional[str] = None
+    file_path: Optional[str] = None
+
+class StudyOut(StudyCreate, OutBase):
+    id: int
+    date: datetime
+
+
+# ---------- Referral ----------
+class ReferralCreate(BaseModel):
+    patient_id: int
+    to_specialist: str
+    reason: str
+
+class ReferralOut(ReferralCreate, OutBase):
+    id: int
+    doctor_id: int
+    date: datetime
+
+
+# ---------- WorkOrder ----------
+class WorkOrderCreate(BaseModel):
+    patient_id: int
+    manipulations: str
+    materials: str
+    labor_cost: float
+
+class WorkOrderOut(WorkOrderCreate, OutBase):
+    id: int
+    doctor_id: int
+    date: datetime
+
+
+# ---------- МКБ-С-3 ----------
+class MKBSCodeBase(BaseModel):
+    code: str
+    name: str
+    category: str  # 'diagnosis' или 'service'
+    parent_code: Optional[str] = None
+
+class MKBSCodeCreate(MKBSCodeBase):
+    pass
+
+class MKBSCodeOut(MKBSCodeBase, OutBase):
+    id: int
+    is_active: bool
+
+
+# ---------- Service ----------
+class ServiceCreate(BaseModel):
+    code: str
+    name: str
+    cost: float
+    duration_minutes: int = 30
+    material_cost: float = 0.0
+
+class ServiceUpdate(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    cost: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    material_cost: Optional[float] = None
+
+class ServiceOut(ServiceCreate, OutBase):
+    id: int
+
+
+# ---------- Material ----------
+class MaterialCreate(BaseModel):
+    name: str
+    unit: str = "шт"
+    price_per_unit: float
+
+class MaterialUpdate(BaseModel):
+    name: Optional[str] = None
+    unit: Optional[str] = None
+    price_per_unit: Optional[float] = None
+
+class MaterialOut(MaterialCreate, OutBase):
+    id: int
+
+
+# ---------- MaterialUsage ----------
+class MaterialUsageCreate(BaseModel):
+    material_id: int
+    quantity: float
+    cost: float
+
+class MaterialUsageOut(MaterialUsageCreate, OutBase):
+    id: int
+
+
+# ---------- Procedure ----------
+class ProcedureCreate(BaseModel):
+    service_id: int
+    quantity: int = 1
+
+class ProcedureOut(OutBase):
+    id: int
+    service_id: int
+    quantity: int
+    total_cost: float
+
+
+# ---------- Investigation ----------
+class InvestigationCreate(BaseModel):
+    type: str
+    description: str
+    result: str = ""
+
+class InvestigationOut(InvestigationCreate, OutBase):
+    id: int
+
+
+# ---------- Visit ----------
+class VisitCreate(BaseModel):
+    appointment_id: int
+    patient_id: int
+    doctor_id: int
+    anamnesis: str = ""
+    examination_results: str = ""
+    diagnosis_id: Optional[int] = None
+    treatment_plan: str = ""
+    prescription: str = ""
+    tooth_formula: str = ""
+
+class VisitUpdate(BaseModel):
+    anamnesis: Optional[str] = None
+    examination_results: Optional[str] = None
+    diagnosis_id: Optional[int] = None
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
+    tooth_formula: Optional[str] = None
+
+class VisitOut(VisitCreate, OutBase):
+    id: int
+    visit_date: datetime
+
+
+# ---------- AppointmentLog ----------
+class AppointmentLogCreate(BaseModel):
+    appointment_id: int
+    old_status: str
+    new_status: str
+    comment: str = ""
+
+class AppointmentLogOut(AppointmentLogCreate, OutBase):
+    id: int
+    changed_by_login: Optional[str] = None
+    changed_at: datetime
+
+
+# ---------- PatientMedicalInfo ----------
+class PatientMedicalInfoCreate(BaseModel):
+    patient_id: int
+    allergies: str = ""
+    chronic_conditions: str = ""
+    contraindications: str = ""
+    blood_type: str = ""
+    notes: str = ""
+
+class PatientMedicalInfoUpdate(BaseModel):
+    allergies: Optional[str] = None
+    chronic_conditions: Optional[str] = None
+    contraindications: Optional[str] = None
+    blood_type: Optional[str] = None
+    notes: Optional[str] = None
+
+class PatientMedicalInfoOut(PatientMedicalInfoCreate, OutBase):
+    id: int
+    updated_at: datetime
+
+
+# ---------- MedicalRecordExtract ----------
+class MedicalRecordExtractCreate(BaseModel):
+    visit_id: int
+    content: str
+    file_path: Optional[str] = None
+
+class MedicalRecordExtractOut(MedicalRecordExtractCreate, OutBase):
+    id: int
+    created_at: datetime
+
+
+# ---------- VisitReport ----------
+class VisitReportCreate(BaseModel):
+    visit_id: int
+    title: str = "Отчёт о приёме"
+    summary: str
+    recommendations: str = ""
+    complications: str = ""
+
+class VisitReportOut(VisitReportCreate, OutBase):
+    id: int
+    author_login: Optional[str] = None
+    created_at: datetime

@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Левая колонка: Информация о записи -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Информация о записи</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Пациент:</strong> {{ patient.full_name|default:"—" }}</p>
+                    <p><strong>Дата:</strong> {{ appointment.datetime|date:"d.m.Y H:i" }}</p>
+                    <p><strong>Статус:</strong>
+                        {% if appointment.status == 'scheduled' %}
+                            <span class="badge bg-warning">Запланирован</span>
+                        {% elif appointment.status == 'completed' %}
+                            <span class="badge bg-success">Завершен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Отменен</span>
+                        {% endif %}
+                    </p>
+
+                    {% if appointment.status == 'scheduled' %}
+                        <hr>
+                        <!-- КНОПКА ЗАВЕРШИТЬ ПРИЕМ -->
+                        <a href="#finishModal" data-bs-toggle="modal" class="btn btn-success w-100 py-2">
+                            <i class="fas fa-check-circle"></i> Завершить прием
+                        </a>
+                    {% endif %}
+
+                    <a href="{% url 'app:doctor_dashboard' %}" class="btn btn-outline-secondary w-100 mt-2">Назад к расписанию</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: История или детали (если уже завершен) -->
+        <div class="col-md-8">
+            {% if visit %}
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Отчет о проведенном приеме</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row">
+                            <dt class="col-sm-3">Жалобы:</dt>
+                            <dd class="col-sm-9">{{ visit.anamnesis|default:"—" }}</dd>
+
+                            <dt class="col-sm-3">Осмотр:</dt>
+                            <dd class="col-sm-9">{{ visit.examination_results|default:"—" }}</dd>
+
+                            <dt class="col-sm-3">Диагноз:</dt>
+                            <dd class="col-sm-9">{{ visit.diagnosis|default:"—" }}</dd>
+
+                            <dt class="col-sm-3">Лечение:</dt>
+                            <dd class="col-sm-9">{{ visit.treatment_plan|default:"—" }}</dd>
+
+                            <dt class="col-sm-3">Зубная формула:</dt>
+                            <dd class="col-sm-9"><code>{{ visit.tooth_formula|default:"—" }}</code></dd>
+                        </dl>
+
+                        <div class="mt-3 d-flex gap-2">
+                             <a href="{% url 'app:create_extract' visit.id %}" class="btn btn-outline-primary">
+                                <i class="fas fa-file-word"></i> Скачать справку (Word)
+                            </a>
+                            <a href="{% url 'app:visit_report' visit.id %}" class="btn btn-primary">
+                                <i class="fas fa-file-medical"></i> Написать отчёт
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {# Отчёты о приёме #}
+                <div class="card shadow-sm mt-3">
+                    <div class="card-header bg-light"><h5 class="mb-0">Отчёты о приёме</h5></div>
+                    <div class="card-body">
+                        {% for r in reports %}
+                            <div class="border-bottom pb-2 mb-2">
+                                <strong>{{ r.title }}</strong>
+                                <small class="text-muted">— {{ r.created_at|date:"d.m.Y H:i" }}</small>
+                                <p class="mb-1">{{ r.summary }}</p>
+                                {% if r.recommendations %}<p class="mb-0"><em>Рекомендации:</em> {{ r.recommendations }}</p>{% endif %}
+                            </div>
+                        {% empty %}
+                            <p class="text-muted mb-0">Отчётов пока нет.
+                                <a href="{% url 'app:visit_report' visit.id %}">Написать отчёт</a>
+                            </p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    Прием еще не завершен. Нажмите кнопку "Завершить прием" слева, чтобы внести данные.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для завершения приема -->
+<div class="modal fade" id="finishModal" tabindex="-1" aria-labelledby="finishModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="finishModalLabel">Завершение приема: {{ patient.full_name|default:"" }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Форма внесения данных осмотра -->
+                <form method="post" action="{% url 'app:start_visit' appointment.id %}">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Жалобы / Анамнез</label>
+                        <textarea name="anamnesis" class="form-control" rows="2" placeholder="Что беспокоит пациента?"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Результаты осмотра</label>
+                        <textarea name="examination_results" class="form-control" rows="3" placeholder="Состояние полости рта..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Диагноз (МКБ)</label>
+                            <input list="mkbDiagnoses" id="diagnosisText" class="form-control"
+                                   placeholder="Введите код или название…">
+                            <datalist id="mkbDiagnoses">
+                                {% for d in diagnoses %}
+                                    <option data-id="{{ d.id }}" value="{{ d.code }} — {{ d.name }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            <input type="hidden" name="diagnosis" id="diagnosisId">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Зубная формула</label>
+                            <input type="text" name="tooth_formula" class="form-control" placeholder="Например: 46, 47">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">План лечения / Назначения</label>
+                        <textarea name="treatment_plan" class="form-control" rows="3" placeholder="Что было сделано или назначено"></textarea>
+                    </div>
+
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-exclamation-triangle"></i> После нажатия кнопки статус приема изменится на "Завершен", и редактирование будет ограничено.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-success">Подтвердить и завершить</button>
+                </div>
+                </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Сопоставляем выбранный в datalist текст диагноза с id кода МКБ (скрытое поле).
+(function () {
+    var input = document.getElementById('diagnosisText');
+    var hidden = document.getElementById('diagnosisId');
+    var list = document.getElementById('mkbDiagnoses');
+    if (!input || !hidden || !list) return;
+    function sync() {
+        hidden.value = '';
+        for (var i = 0; i < list.options.length; i++) {
+            if (list.options[i].value === input.value) {
+                hidden.value = list.options[i].dataset.id;
+                break;
+            }
+        }
+    }
+    input.addEventListener('change', sync);
+    input.addEventListener('input', sync);
+})();
+</script>
+{% endblock %}

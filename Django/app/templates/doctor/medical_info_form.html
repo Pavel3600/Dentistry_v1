@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Мед. информация{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card card-custom p-4">
+      <h3 class="mb-1 text-teal"><i class="fas fa-notes-medical"></i> Мед. предупреждения</h3>
+      <p class="text-muted">Пациент: <strong>{{ patient.full_name }}</strong></p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label text-danger"><i class="fas fa-exclamation-triangle"></i> Аллергии</label>
+          {{ form.allergies }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Хронические заболевания</label>{{ form.chronic_conditions }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Противопоказания</label>{{ form.contraindications }}
+        </div>
+        <div class="row">
+          <div class="col-md-4 mb-3"><label class="form-label">Группа крови</label>{{ form.blood_type }}</div>
+        </div>
+        <div class="mb-3"><label class="form-label">Заметки</label>{{ form.notes }}</div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+          <a href="{% url 'app:patient_history' patient.id %}" class="btn btn-outline-secondary">Назад к истории</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

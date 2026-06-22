@@ -1,0 +1,39 @@
+> from fastapi import APIRouter, Depends, HTTPException
+> from sqlalchemy.ext.asyncio import AsyncSession
+> from sqlalchemy import select, func
+> from app.core.database import get_db
+> from app.models.medical_models import Appointment
+> from app.models.client_models import Clients
+> from app.core.roles import require_manager
+  
+> router = APIRouter()
+  
+> @router.get("/appointments-count")
+> async def get_appointments_count(
+>     db: AsyncSession = Depends(get_db),
+>     _=Depends(require_manager)
+> ):
+!     result = await db.execute(select(func.count()).select_from(Appointment))
+!     return {"total_appointments": result.scalar()}
+  
+> @router.get("/popular-doctor")
+> async def get_most_popular_doctor(
+>     db: AsyncSession = Depends(get_db),
+>     _=Depends(require_manager)
+> ):
+!     subq = (
+!         select(Appointment.doctor_id, func.count().label("cnt"))
+!         .group_by(Appointment.doctor_id)
+!         .subquery()
+!     )
+!     result = await db.execute(
+!         select(Clients.login, subq.c.cnt)
+!         .join(subq, Clients.id == subq.c.doctor_id)
+!         .order_by(subq.c.cnt.desc())
+!         .limit(1)
+!     )
+!     row = result.first()
+!     if not row:
+          # Данных пока нет — отдаём 200 с пояснением, а не 404.
+!         return {"doctor": None, "detail": "Нет записей"}
+!     return {"doctor": row.login, "appointments": row.cnt}

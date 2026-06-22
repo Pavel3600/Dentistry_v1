@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Направление</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Создать</button>
+    {% if visit.appointment_id %}<a href="{% url 'app:appointment_detail' visit.appointment_id %}" class="btn btn-secondary">Отмена</a>{% endif %}
+</form>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block title %}Delete category{% endblock %}
+
+{% block content %}
+
+<h2>Delete category?</h2>
+
+<p><strong>Category ID:</strong> {{ category_id }}</p>
+
+{% if category %}
+    <p><strong>Name:</strong> {{ category.name_category }}</p>
+    <p><strong>Route:</strong> {{ category.route_category }}</p>
+{% endif %}
+
+{% if error %}
+    <div class="error">
+        <strong>Error:</strong> {{ error }}
+    </div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="buttons">
+        <button type="submit" class="btn btn-danger">
+            Yes, delete permanently
+        </button>
+
+        <a href="{% url 'admin_panel:category_list' %}" class="btn btn-secondary">
+            Cancel
+        </a>
+    </div>
+</form>
+
+{% endblock %}

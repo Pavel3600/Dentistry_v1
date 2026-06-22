@@ -1,0 +1,11 @@
+[run]
+source = app
+omit =
+    app/tests/*
+    app/migrations/*
+    app/docx.py
+    app/controllers/*
+
+[report]
+show_missing = true
+skip_covered = false

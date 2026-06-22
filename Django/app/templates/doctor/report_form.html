@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Отчёт о приёме{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-9">
+    <div class="card card-custom p-4 mb-4">
+      <h3 class="mb-1 text-teal">
+        <i class="fas fa-file-medical"></i>
+        {% if editing %}Редактирование отчёта{% else %}Отчёт после приёма{% endif %}
+      </h3>
+      <p class="text-muted">
+        Визит #{{ visit.id }} — {{ visit.patient.full_name }} ({{ visit.visit_date|date:"d.m.Y" }})
+      </p>
+      <form method="post"
+            action="{% if editing %}{% url 'app:report_edit' editing.pk %}{% else %}{% url 'app:visit_report' visit.id %}{% endif %}">
+        {% csrf_token %}
+        <div class="mb-3"><label class="form-label">Заголовок</label>{{ form.title }}</div>
+        <div class="mb-3"><label class="form-label">Заключение</label>{{ form.summary }}{{ form.summary.errors }}</div>
+        <div class="mb-3"><label class="form-label">Рекомендации</label>{{ form.recommendations }}</div>
+        <div class="mb-3"><label class="form-label">Осложнения / особенности</label>{{ form.complications }}</div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            {% if editing %}Сохранить изменения{% else %}Сохранить отчёт{% endif %}
+          </button>
+          {% if editing %}
+            <a href="{% url 'app:visit_report' visit.id %}" class="btn btn-outline-secondary">Отмена</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    {% if reports %}
+    <div class="card card-custom p-4">
+      <h5 class="text-teal mb-3">Отчёты по визиту</h5>
+      {% for r in reports %}
+      <div class="border-bottom py-2">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <strong>{{ r.title }}</strong>
+            <small class="text-muted">— {{ r.created_at|date:"d.m.Y H:i" }},
+              {{ r.author.get_full_name|default:r.author.username }}</small>
+            <p class="mb-1">{{ r.summary }}</p>
+            {% if r.recommendations %}<p class="mb-0 small"><em>Рекомендации:</em> {{ r.recommendations }}</p>{% endif %}
+          </div>
+          <div class="d-flex gap-1 ms-2">
+            <a href="{% url 'app:report_edit' r.pk %}" class="btn btn-sm btn-outline-warning" title="Редактировать">
+              <i class="fas fa-edit"></i>
+            </a>
+            <form method="post" action="{% url 'app:report_delete' r.pk %}"
+                  onsubmit="return confirm('Удалить отчёт?');">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-danger" title="Удалить"><i class="fas fa-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

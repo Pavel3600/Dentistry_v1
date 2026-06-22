@@ -1,0 +1,75 @@
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc, func
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.schemas.client_schema import ClientSchema
+from app.api.deps import get_current_user
+from app.core.roles import require_manager, require_dentist, require_admin, require_manager_or_dentist, ROLE_HIERARCHY
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+router = APIRouter(prefix="/api", tags=["Extended"])
+
+# PATIENTS
+@router.get("/patients/all", response_model=List[ClientSchema])
+async def get_all_patients(db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager_or_dentist)):
+    result = await db.execute(select(Clients).where(Clients.role == "patient"))
+    return result.scalars().all()
+
+@router.get("/patients/search")
+async def search_patients(query: str = Query(...), db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager_or_dentist)):
+    result = await db.execute(select(Clients).where(Clients.role == "patient", Clients.login.ilike(f"%{query}%")))
+    return result.scalars().all()
+
+@router.get("/patients/count")
+async def count_patients(db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager_or_dentist)):
+    result = await db.execute(select(func.count(Clients.id)).where(Clients.role == "patient"))
+    return {"count": result.scalar()}
+
+@router.get("/patients/active")
+async def get_active_patients(days: int = Query(7), db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager_or_dentist)):
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    result = await db.execute(select(Clients).where(Clients.role == "patient", Clients.created_at >= cutoff))
+    return result.scalars().all()
+
+# STATISTICS
+@router.get("/stats/users-by-role")
+async def stats_by_role(db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager)):
+    stats = {}
+    for role in ["admin", "manager", "dentist", "patient"]:
+        result = await db.execute(select(func.count(Clients.id)).where(Clients.role == role))
+        stats[role] = result.scalar()
+    return stats
+
+@router.get("/stats/total")
+async def stats_total(db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_manager)):
+    result = await db.execute(select(func.count(Clients.id)))
+    return {"total": result.scalar()}
+
+# USERS
+@router.get("/users/list")
+async def list_users(skip: int = Query(0), limit: int = Query(10), db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_admin)):
+    result = await db.execute(select(Clients).offset(skip).limit(limit))
+    return result.scalars().all()
+
+@router.get("/users/by-role/{role}")
+async def users_by_role(role: str, db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_admin)):
+    if role not in ["admin", "manager", "dentist", "patient"]:
+        raise HTTPException(400, "Invalid role")
+    result = await db.execute(select(Clients).where(Clients.role == role))
+    return result.scalars().all()
+
+# HEALTH
+@router.get("/health")
+async def health_check(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(select(func.count(Clients.id)))
+        return {"healthy": True}
+    except:
+        return {"healthy": False}
+
+@router.get("/status")
+async def system_status(db: AsyncSession = Depends(get_db), current_user: Clients = Depends(require_admin)):
+    result = await db.execute(select(func.count(Clients.id)))
+    return {"status": "online", "users": result.scalar()}

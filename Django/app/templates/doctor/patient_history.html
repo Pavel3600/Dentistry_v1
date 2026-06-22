@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-teal">История посещений: {{ patient.full_name }}</h2>
+    <a href="{% url 'app:patient_medical_info' patient.id %}" class="btn btn-outline-danger">
+        <i class="fas fa-notes-medical"></i> Мед. информация
+    </a>
+</div>
+
+{# Блок мед. предупреждений — врач сразу видит аллергии и пр. #}
+{% if medical_info %}
+    {% if medical_info.has_alerts %}
+    <div class="alert alert-danger alert-allergy">
+        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Внимание!</h5>
+        {% if medical_info.allergies %}<p class="mb-1"><strong>Аллергии:</strong> {{ medical_info.allergies }}</p>{% endif %}
+        {% if medical_info.chronic_conditions %}<p class="mb-1"><strong>Хронические:</strong> {{ medical_info.chronic_conditions }}</p>{% endif %}
+        {% if medical_info.contraindications %}<p class="mb-0"><strong>Противопоказания:</strong> {{ medical_info.contraindications }}</p>{% endif %}
+    </div>
+    {% endif %}
+    {% if medical_info.blood_type %}<p><span class="badge bg-dark">Группа крови: {{ medical_info.get_blood_type_display }}</span></p>{% endif %}
+{% else %}
+    <div class="alert alert-secondary">Мед. информация не заполнена.
+        <a href="{% url 'app:patient_medical_info' patient.id %}">Заполнить</a>
+    </div>
+{% endif %}
+
+{% for v in visits %}
+    <div class="card card-custom mb-3">
+        <div class="card-header d-flex justify-content-between">
+            <span>Дата: {{ v.visit_date.date }} | Врач: {{ v.doctor.user.get_full_name }}</span>
+            <a href="{% url 'app:visit_report' v.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-file-medical"></i> Отчёт
+            </a>
+        </div>
+        <div class="card-body">
+            <p><strong>Диагноз:</strong> {{ v.diagnosis }}</p>
+            <p><strong>Лечение:</strong> {{ v.treatment_plan }}</p>
+            <p><strong>Зубная формула:</strong> {{ v.tooth_formula }}</p>
+            {% for r in v.reports.all %}
+                <div class="alert alert-light border mb-1"><strong>{{ r.title }}:</strong> {{ r.summary }}</div>
+            {% endfor %}
+        </div>
+    </div>
+{% empty %}
+    <p>Нет посещений</p>
+{% endfor %}
+<a href="{% url 'app:doctor_dashboard' %}" class="btn btn-secondary">Назад</a>
+{% endblock %}

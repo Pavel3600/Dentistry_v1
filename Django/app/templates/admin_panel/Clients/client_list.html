@@ -1,0 +1,46 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block title %}List of categories{% endblock %}
+
+{% block content %}
+
+<h2>List of categories</h2>
+
+<div class="buttons">
+    <a class="btn btn-primary" href="{% url 'admin_panel:category_create' %}">
+        Add Category
+    </a>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Route</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for c in items %}
+        <tr>
+            <td>{{ c.id_category }}</td>
+            <td>{{ c.name_category }}</td>
+            <td>{{ c.route_category }}</td>
+            <td>
+                <a class="btn btn-danger btn-sm"
+                   href="{% url 'admin_panel:category_delete' c.id_category %}">
+                    Delete
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">No categories found</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

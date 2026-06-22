@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Авторизация{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4><i class="fas fa-lock"></i> Вход в систему</h4>
+            </div>
+            <div class="card-body">
+
+                <!-- Сообщения от Django (например, об ошибке входа) -->
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Неверное имя пользователя или пароль.
+                    </div>
+                {% endif %}
+
+                <!-- Сообщения от системы (например, о недоступности FastAPI) -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Логин</label>
+                        <input type="text" name="username" id="id_username" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label">Пароль</label>
+                        <input type="password" name="password" id="id_password" class="form-control" required>
+                    </div>
+
+                    <!-- Скрытое поле next для перенаправления после входа -->
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary w-100">Войти</button>
+                </form>
+
+                <hr>
+                <div class="text-center">
+                    <a href="{% url 'password_reset' %}">Забыли пароль?</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

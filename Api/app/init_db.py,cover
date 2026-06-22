@@ -1,0 +1,39 @@
+> """
+> Инициализация БД: создаёт все таблицы и базовые учётки clients.
+> Запуск: python -m app.init_db  (из папки Api/)
+  
+> Для сброса/пересоздания учёток используйте: python scripts/seed_accounts.py
+> """
+> import asyncio
+> from sqlalchemy import select
+> from app.core.database import engine, Base, AsyncSessionLocal
+> from app.models.client_models import Clients
+> from app.models.medical_models import (
+>     MKBSCode, Patient, Appointment, MedicalRecord, Study, Referral, WorkOrder,
+>     Service, Material, Visit, Procedure, MaterialUsage, AppointmentLog,
+>     Investigation, PatientMedicalInfo, MedicalRecordExtract, VisitReport,
+> )
+> from app.core.security import hash_password
+  
+> SEED_CLIENTS = [
+>     ("admin",   "admin123",   "admin"),
+>     ("manager", "manager123", "manager"),
+>     ("dentist", "dentist123", "dentist"),
+> ]
+  
+  
+> async def init_database():
+!     async with engine.begin() as conn:
+!         await conn.run_sync(Base.metadata.create_all)
+  
+!     async with AsyncSessionLocal() as db:
+!         for login, pwd, role in SEED_CLIENTS:
+!             result = await db.execute(select(Clients).where(Clients.login == login))
+!             if not result.scalar_one_or_none():
+!                 db.add(Clients(login=login, password=hash_password(pwd), role=role))
+!         await db.commit()
+  
+  
+> if __name__ == "__main__":
+!     asyncio.run(init_database())
+!     print("[OK] Таблицы созданы, базовые clients готовы (admin/manager/dentist).")

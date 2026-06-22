@@ -1,0 +1,138 @@
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+from app.core.database import get_db
+from app.models.client_models import Clients
+
+router = APIRouter(tags=["Endpoints"])
+
+# ===== DOCTORS =====
+@router.get("/doctors", response_model=List[dict], summary="Получить врачей")
+async def get_doctors(db: AsyncSession = Depends(get_db)):
+    """Получить список всех врачей (dentist)"""
+    result = await db.execute(select(Clients).where(Clients.role == "dentist"))
+    doctors = result.scalars().all()
+    return [{"id": d.id, "login": d.login, "role": d.role} for d in doctors]
+
+# ===== APPOINTMENTS =====
+class AppointmentSchema(BaseModel):
+    patient_id: int
+    doctor_name: Optional[str] = ""
+    service: Optional[str] = ""
+    appointment_date: str
+    status: str = "pending"
+    notes: Optional[str] = ""
+    created_by: Optional[str] = ""
+
+# Временная in-memory storage пока нет моделей в БД
+APPOINTMENTS_DB = []
+MEDICAL_RECORDS_DB = []
+STUDIES_DB = []
+
+@router.get("/appointments", response_model=List[dict], summary="Получить записи")
+async def get_appointments(db: AsyncSession = Depends(get_db)):
+    """Получить список всех записей с именами пациентов"""
+    from app.models.medical_models import Patient
+    result = await db.execute(select(Patient))
+    patients = {p.id: p.full_name for p in result.scalars().all()}
+
+    enriched = []
+    for appt in APPOINTMENTS_DB:
+        item = dict(appt)
+        item["patient_name"] = patients.get(appt.get("patient_id"), f"ID {appt.get('patient_id')}")
+        enriched.append(item)
+    return enriched
+
+@router.post("/appointments", response_model=dict, summary="Добавить запись")
+async def create_appointment(appointment: AppointmentSchema):
+    """Добавить новую запись на приём"""
+    appt_data = appointment.dict()
+    appt_data["id"] = len(APPOINTMENTS_DB) + 1
+    appt_data["created_at"] = datetime.now().isoformat()
+    APPOINTMENTS_DB.append(appt_data)
+    return {"success": True, "message": "Запись добавлена", "appointment_id": appt_data["id"]}
+
+class AppointmentUpdateSchema(BaseModel):
+    doctor_name: Optional[str] = None
+    service: Optional[str] = None
+    appointment_date: Optional[str] = None
+    notes: Optional[str] = None
+    mkb_code: Optional[str] = None
+
+@router.put("/appointments/{appt_id}", response_model=dict, summary="Обновить запись")
+async def update_appointment(appt_id: int, data: AppointmentUpdateSchema):
+    """Обновить поля записи на приём"""
+    for appt in APPOINTMENTS_DB:
+        if appt.get("id") == appt_id:
+            if data.doctor_name is not None:
+                appt["doctor_name"] = data.doctor_name
+            if data.service is not None:
+                appt["service"] = data.service
+            if data.appointment_date is not None:
+                appt["appointment_date"] = data.appointment_date
+            if data.notes is not None:
+                appt["notes"] = data.notes
+            if data.mkb_code is not None:
+                appt["mkb_code"] = data.mkb_code
+            return {"success": True, "message": "Запись обновлена"}
+    raise HTTPException(status_code=404, detail="Запись не найдена")
+
+@router.patch("/appointments/{appt_id}/status", response_model=dict, summary="Изменить статус записи")
+async def update_appointment_status(appt_id: int, status: str):
+    """Изменить статус записи на приём"""
+    valid_statuses = ["pending", "confirmed", "completed", "cancelled"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Статус должен быть одним из: {valid_statuses}")
+    for appt in APPOINTMENTS_DB:
+        if appt.get("id") == appt_id:
+            appt["status"] = status
+            return {"success": True, "message": f"Статус изменён на {status}"}
+    raise HTTPException(status_code=404, detail="Запись не найдена")
+
+# ===== MEDICAL RECORDS =====
+class MedicalRecordSchema(BaseModel):
+    patient_id: int
+    diagnosis: str
+    treatment: str
+    doctor_id: int
+    mkb_code: Optional[str] = None
+    notes: Optional[str] = ""
+
+@router.get("/medical-records", response_model=List[dict], summary="Получить медицинские записи")
+async def get_medical_records():
+    """Получить список медицинских записей"""
+    return MEDICAL_RECORDS_DB
+
+@router.post("/medical-records", response_model=dict, summary="Добавить медицинскую запись")
+async def create_medical_record(record: MedicalRecordSchema):
+    """Добавить новую медицинскую запись"""
+    record_data = record.dict()
+    record_data["id"] = len(MEDICAL_RECORDS_DB) + 1
+    record_data["created_at"] = datetime.now().isoformat()
+    MEDICAL_RECORDS_DB.append(record_data)
+    return {"success": True, "message": "Запись добавлена", "record_id": record_data["id"]}
+
+# ===== STUDIES =====
+class StudySchema(BaseModel):
+    patient_id: int
+    study_type: str  # Рентген, КТ, УЗИ, Анализы, Панорамный, Микроскопия
+    description: str
+    date: str
+    results: Optional[str] = None
+
+@router.get("/studies", response_model=List[dict], summary="Получить исследования")
+async def get_studies():
+    """Получить список исследований"""
+    return STUDIES_DB
+
+@router.post("/studies", response_model=dict, summary="Добавить исследование")
+async def create_study(study: StudySchema):
+    """Добавить новое исследование"""
+    study_data = study.dict()
+    study_data["id"] = len(STUDIES_DB) + 1
+    study_data["created_at"] = datetime.now().isoformat()
+    STUDIES_DB.append(study_data)
+    return {"success": True, "message": "Исследование добавлено", "study_id": study_data["id"]}

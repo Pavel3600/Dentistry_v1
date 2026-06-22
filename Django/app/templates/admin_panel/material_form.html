@@ -1,0 +1,5 @@
+{% extends "admin_panel/base.html" %}
+{% block content %}
+<h1>Материал</h1>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Сохранить</button></form>
+{% endblock %}

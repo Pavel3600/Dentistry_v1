@@ -1,0 +1,32 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.core.database import get_db
+from app.models.client_models import Clients
+from app.schemas.client_schema import ClientSchema
+from app.core.roles import require_admin, require_manager
+
+router = APIRouter(prefix="/clients", tags=["Admin"])
+
+
+@router.get("/", response_model=list[ClientSchema])
+async def get_all_clients(
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_manager)
+):
+    result = await db.execute(select(Clients))
+    return result.scalars().all()
+
+
+@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_client(
+    client_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Clients = Depends(require_admin)
+):
+    client = await db.get(Clients, client_id)
+    if not client:
+        raise HTTPException(404, "Клиент не найден")
+    await db.delete(client)
+    await db.commit()
+    return None

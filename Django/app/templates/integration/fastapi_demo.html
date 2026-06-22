@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Интеграция с FastAPI{% endblock %}
+{% block content %}
+<h2>Тест интеграции с FastAPI</h2>
+<p>Запрос к публичному API (JSONPlaceholder) – динамическая загрузка постов.</p>
+
+<div class="mb-3">
+    <button id="loadBtn" class="btn btn-primary">Загрузить посты</button>
+</div>
+
+<div id="result" class="row"></div>
+
+<script>
+    document.getElementById('loadBtn').addEventListener('click', function() {
+        // Запрос к вашему FastAPI (пример: получение услуг)
+        fetch('/api/services/')  // или полный URL http://localhost:8001/api/v1/mkbs/services
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('result');
+                container.innerHTML = '';
+                data.forEach(item => {
+                    // ... отображение реальных данных
+                });
+            });
+    });
+</script>
+{% endblock %}

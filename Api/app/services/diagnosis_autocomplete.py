@@ -1,0 +1,37 @@
+"""
+Сервис для автозаполнения диагноза по коду МКБ-С-3
+"""
+from typing import Optional, Tuple
+from app.services.mkbs_dll import mkbs_emulator
+
+
+class DiagnosisAutocompleteService:
+    """Сервис для автозаполнения диагноза"""
+
+    @staticmethod
+    def get_diagnosis_by_code(code: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Получить диагноз по коду МКБ-С-3
+        Returns: (found, code, diagnosis_name)
+        """
+        code_info = mkbs_emulator.get_code_info(code)
+        if code_info and code_info.get("category") == "diagnosis":
+            return True, code, code_info.get("name")
+        return False, None, None
+
+    @staticmethod
+    def search_diagnosis(query: str, limit: int = 20) -> list:
+        """Поиск диагнозов по запросу"""
+        results = mkbs_emulator.search_codes(query, category="diagnosis")
+        return [{"code": r[0], "name": r[1]} for r in results[:limit]]
+
+    @staticmethod
+    def search_services(query: str, limit: int = 20) -> list:
+        """Поиск услуг по запросу"""
+        results = mkbs_emulator.search_codes(query, category="service")
+        return [{"code": r[0], "name": r[1]} for r in results[:limit]]
+
+    @staticmethod
+    def validate_diagnosis_code(code: str) -> bool:
+        """Проверить валидность кода диагноза"""
+        return mkbs_emulator.validate_code(code, category="diagnosis")
