@@ -16,7 +16,11 @@ from django.utils import timezone
 import datetime
 import asyncio
 import json
-from .models import UserProfile
+from .models import (
+    UserProfile, Patient, PatientMedicalInfo, Visit, VisitReport,
+    Service, Material, MKBSCode, Appointment as ApptModel,
+    Clients,
+)
 from .controllers import (
     PatientController, AppointmentController,
     MedicalRecordController, MKBSController,
@@ -204,10 +208,7 @@ class ServiceListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/service_list.html'
 
     def get(self, request):
-        try:
-            services = ServiceController.get_all()
-        except Exception:
-            services = []
+        services = list(Service.objects.all())
         return render(request, self.template_name, {'services': services})
 
 
@@ -220,7 +221,8 @@ class ServiceCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = ServiceForm(request.POST)
         if form.is_valid():
-            ServiceController.create(form.cleaned_data)
+            cd = form.cleaned_data
+            Service.objects.create(**cd)
             messages.success(request, 'Услуга успешно создана')
             return redirect('app:service_list')
         return render(request, self.template_name, {'form': form})
@@ -230,18 +232,27 @@ class ServiceUpdateView(AdminRequiredMixin, View):
     template_name = 'admin_panel/service_form.html'
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            service = ServiceController.get_by_id(pk)
-        except Exception:
-            from django.http import Http404
+            service = Service.objects.get(pk=pk)
+        except Service.DoesNotExist:
             raise Http404
-        form = ServiceForm(initial=service)
+        form = ServiceForm(initial={'code': service.code, 'name': service.name,
+                                    'cost': service.cost, 'duration_minutes': service.duration_minutes,
+                                    'material_cost': service.material_cost})
         return render(request, self.template_name, {'form': form, 'object': service})
 
     def post(self, request, pk):
+        from django.http import Http404
+        try:
+            service = Service.objects.get(pk=pk)
+        except Service.DoesNotExist:
+            raise Http404
         form = ServiceForm(request.POST)
         if form.is_valid():
-            ServiceController.update(pk, form.cleaned_data)
+            for k, v in form.cleaned_data.items():
+                setattr(service, k, v)
+            service.save()
             messages.success(request, 'Услуга успешно обновлена')
             return redirect('app:service_list')
         return render(request, self.template_name, {'form': form})
@@ -250,11 +261,8 @@ class ServiceUpdateView(AdminRequiredMixin, View):
 class ServiceDeleteView(AdminRequiredMixin, View):
 
     def post(self, request, pk):
-        try:
-            ServiceController.delete(pk)
-            messages.success(request, 'Услуга удалена')
-        except Exception:
-            messages.error(request, 'Ошибка при удалении')
+        Service.objects.filter(pk=pk).delete()
+        messages.success(request, 'Услуга удалена')
         return redirect('app:service_list')
 
 
@@ -262,10 +270,7 @@ class MaterialListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/material_list.html'
 
     def get(self, request):
-        try:
-            materials = MaterialController.get_all()
-        except Exception:
-            materials = []
+        materials = list(Material.objects.all())
         return render(request, self.template_name, {'materials': materials})
 
 
@@ -278,7 +283,8 @@ class MaterialCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = MaterialForm(request.POST)
         if form.is_valid():
-            MaterialController.create(form.cleaned_data)
+            cd = form.cleaned_data
+            Material.objects.create(**cd)
             messages.success(request, 'Материал успешно создан')
             return redirect('app:material_list')
         return render(request, self.template_name, {'form': form})
@@ -288,18 +294,25 @@ class MaterialUpdateView(AdminRequiredMixin, View):
     template_name = 'admin_panel/material_form.html'
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            material = MaterialController.get_by_id(pk)
-        except Exception:
-            from django.http import Http404
+            material = Material.objects.get(pk=pk)
+        except Material.DoesNotExist:
             raise Http404
-        form = MaterialForm(initial=material)
+        form = MaterialForm(initial={'name': material.name, 'unit': material.unit, 'price_per_unit': material.price_per_unit})
         return render(request, self.template_name, {'form': form, 'object': material})
 
     def post(self, request, pk):
+        from django.http import Http404
+        try:
+            material = Material.objects.get(pk=pk)
+        except Material.DoesNotExist:
+            raise Http404
         form = MaterialForm(request.POST)
         if form.is_valid():
-            MaterialController.update(pk, form.cleaned_data)
+            for k, v in form.cleaned_data.items():
+                setattr(material, k, v)
+            material.save()
             messages.success(request, 'Материал успешно обновлён')
             return redirect('app:material_list')
         return render(request, self.template_name, {'form': form})
@@ -308,23 +321,16 @@ class MaterialUpdateView(AdminRequiredMixin, View):
 class MaterialDeleteView(AdminRequiredMixin, View):
 
     def post(self, request, pk):
-        try:
-            MaterialController.delete(pk)
-            messages.success(request, 'Материал удалён')
-        except Exception:
-            messages.error(request, 'Ошибка при удалении')
+        Material.objects.filter(pk=pk).delete()
+        messages.success(request, 'Материал удалён')
         return redirect('app:material_list')
 
 
-# CRUD для кодов МКБ через FastAPI
 class MkbCodeListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/mkb_list.html'
 
     def get(self, request):
-        try:
-            codes = MKBSController.get_diagnoses()
-        except Exception:
-            codes = []
+        codes = list(MKBSCode.objects.all())
         return render(request, self.template_name, {'codes': codes})
 
 
@@ -338,13 +344,10 @@ class MkbCodeCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = MkbCodeForm(request.POST)
         if form.is_valid():
-            try:
-                MKBSController.get_diagnoses()  # проверка доступности API
-                CategoryController.create(form.cleaned_data)
-                messages.success(request, 'Код МКБ успешно создан')
-                return redirect(self.success_url)
-            except Exception as e:
-                messages.error(request, f'Ошибка API: {e}')
+            cd = form.cleaned_data
+            MKBSCode.objects.create(**cd)
+            messages.success(request, 'Код МКБ успешно создан')
+            return redirect(self.success_url)
         return render(request, self.template_name, {'form': form})
 
 
@@ -353,15 +356,27 @@ class MkbCodeUpdateView(AdminRequiredMixin, View):
     success_url = reverse_lazy('app:mkb_list')
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            code = MKBSController.get_by_id(pk)
-        except Exception:
-            code = {}
-        return render(request, self.template_name, {'form': MkbCodeForm(initial=code), 'code': code})
+            code = MKBSCode.objects.get(pk=pk)
+        except MKBSCode.DoesNotExist:
+            raise Http404
+        form = MkbCodeForm(initial={'code': code.code, 'name': code.name,
+                                    'category': code.category, 'parent_code': code.parent_code,
+                                    'is_active': code.is_active})
+        return render(request, self.template_name, {'form': form, 'code': code})
 
     def post(self, request, pk):
+        from django.http import Http404
+        try:
+            code = MKBSCode.objects.get(pk=pk)
+        except MKBSCode.DoesNotExist:
+            raise Http404
         form = MkbCodeForm(request.POST)
         if form.is_valid():
+            for k, v in form.cleaned_data.items():
+                setattr(code, k, v)
+            code.save()
             messages.success(request, 'Код МКБ обновлён')
             return redirect(self.success_url)
         return render(request, self.template_name, {'form': form})
@@ -371,11 +386,8 @@ class MkbCodeDeleteView(AdminRequiredMixin, View):
     success_url = reverse_lazy('app:mkb_list')
 
     def post(self, request, pk):
-        try:
-            CategoryController.delete(pk)
-            messages.success(request, f'Код #{pk} удалён')
-        except Exception as e:
-            messages.error(request, f'Ошибка: {e}')
+        MKBSCode.objects.filter(pk=pk).delete()
+        messages.success(request, f'Код #{pk} удалён')
         return redirect(self.success_url)
 
 
@@ -443,11 +455,7 @@ class PatientListView(ManagerRequiredMixin, View):
 
     def get(self, request):
         page = int(request.GET.get('page', 1))
-        try:
-            raw = PatientController.get_all(page=page, size=50)
-            patients = [p for p in raw if p.get('id')]
-        except Exception:
-            patients = []
+        patients = list(Patient.objects.all()[(page - 1) * 50: page * 50])
         return render(request, self.template_name, {'patients': patients, 'page': page})
 
 
@@ -462,24 +470,20 @@ class PatientCreateView(ManagerRequiredMixin, View):
         form = PatientForm(request.POST)
         if form.is_valid():
             cd = form.cleaned_data
-            user_id = cd.get('user_id') or PatientHelper.ensure_client_for_patient(cd['full_name'])
-            if not user_id:
-                messages.error(request, 'Не удалось создать учётную запись пациента. Попробуйте ещё раз.')
-                return render(request, self.template_name, {'form': form})
-            data = {
-                'full_name': cd['full_name'],
-                'birth_date': cd['birth_date'],
-                'gender': cd['gender'],
-                'phone': cd['phone'],
-                'address': cd.get('address') or None,
-                'user_id': user_id,
-            }
-            try:
-                PatientController.create(data)
-                messages.success(request, 'Пациент успешно добавлен')
-                return redirect(self.success_url)
-            except Exception as e:
-                messages.error(request, f'Ошибка API: {e}')
+            from django.utils.text import slugify
+            base = slugify(cd['full_name'], allow_unicode=False) or 'patient'
+            login = f"{base}-{timezone.now().strftime('%H%M%S%f')[:9]}"
+            client = Clients.objects.create(login=login, role='patient')
+            patient = Patient.objects.create(
+                full_name=cd['full_name'],
+                birth_date=cd['birth_date'],
+                gender=cd['gender'],
+                phone=cd['phone'],
+                address=cd.get('address') or '',
+                user_id=client.id,
+            )
+            messages.success(request, 'Пациент успешно добавлен')
+            return redirect(self.success_url)
         return render(request, self.template_name, {'form': form})
 
 
@@ -539,11 +543,16 @@ class AppointmentCreateView(ManagerRequiredMixin, View):
                     if hasattr(dt, 'tzinfo') and dt.tzinfo:
                         dt = dt.replace(tzinfo=None)
                     data['datetime'] = dt.isoformat()
-                result = AppointmentController.create(data)
-                messages.success(request, f'Запись успешно создана! ID: {result.get("id")}')
+                patient_obj = Patient.objects.get(pk=data['patient_id'])
+                doctor_obj = User.objects.get(pk=data['doctor_id'])
+                appt = ApptModel.objects.create(
+                    patient=patient_obj, doctor=doctor_obj,
+                    datetime=data['datetime'], status='scheduled',
+                )
+                messages.success(request, f'Запись успешно создана! ID: {appt.id}')
                 return redirect(self.success_url)
             except Exception as e:
-                messages.error(request, f'Ошибка API: {e}')
+                messages.error(request, f'Ошибка: {e}')
         else:
             messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
         return render(request, self.template_name, self._get_context(form))
@@ -554,22 +563,32 @@ class PatientUpdateView(ManagerRequiredMixin, View):
     success_url = reverse_lazy('app:patient_list')
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            patient = PatientController.get_by_id(pk)
-        except Exception:
-            patient = {}
-        return render(request, self.template_name, {'form': PatientForm(initial=patient), 'patient': patient})
+            patient = Patient.objects.get(pk=pk)
+        except Patient.DoesNotExist:
+            raise Http404
+        form = PatientForm(initial={'full_name': patient.full_name, 'birth_date': patient.birth_date,
+                                    'gender': patient.gender, 'phone': patient.phone, 'address': patient.address})
+        return render(request, self.template_name, {'form': form, 'patient': patient})
 
     def post(self, request, pk):
+        from django.http import Http404
+        try:
+            patient = Patient.objects.get(pk=pk)
+        except Patient.DoesNotExist:
+            raise Http404
         form = PatientForm(request.POST)
         if form.is_valid():
-            try:
-                data = form.cleaned_data
-                PatientController.update(pk, data)
-                messages.success(request, 'Данные пациента обновлены')
-                return redirect(self.success_url)
-            except Exception as e:
-                messages.error(request, f'Ошибка API: {e}')
+            cd = form.cleaned_data
+            patient.full_name = cd['full_name']
+            patient.birth_date = cd['birth_date']
+            patient.gender = cd['gender']
+            patient.phone = cd['phone']
+            patient.address = cd.get('address', '')
+            patient.save()
+            messages.success(request, 'Данные пациента обновлены')
+            return redirect(self.success_url)
         return render(request, self.template_name, {'form': form})
 
 
@@ -586,37 +605,10 @@ class AppointmentListView(ManagerRequiredMixin, View):
     def get(self, request):
         page = int(request.GET.get('page', 1))
         status_filter = request.GET.get('status', '')
-
-        try:
-            appointments = AppointmentController.get_all(page=page, size=50)
-        except Exception:
-            appointments = []
-
-        try:
-            patients = PatientController.get_all(size=100)
-            patient_map = {p['id']: p.get('full_name', '') for p in patients}
-        except Exception:
-            patient_map = {}
-
-        try:
-            doctors = ClientController.get_doctors()
-            doctor_map = {d['id']: d.get('login', f"Врач #{d['id']}") for d in doctors}
-        except Exception:
-            doctor_map = {}
-
+        qs = ApptModel.objects.select_related('patient', 'doctor').order_by('-datetime')
         if status_filter:
-            appointments = [a for a in appointments if a.get('status') == status_filter]
-
-        try:
-            visits_list = VisitController.get_all(size=100)
-            visits = {v['appointment_id']: v for v in visits_list}
-        except Exception:
-            visits = {}
-        for a in appointments:
-            a['patient_name'] = patient_map.get(a.get('patient_id'), f"Пациент #{a.get('patient_id')}")
-            a['doctor_name'] = doctor_map.get(a.get('doctor_id'), f"Врач #{a.get('doctor_id')}")
-            a['visit_obj'] = visits.get(a['id'])
-
+            qs = qs.filter(status=status_filter)
+        appointments = list(qs[(page - 1) * 50: page * 50])
         return render(request, self.template_name, {
             'appointments': appointments,
             'status_choices': STATUS_CHOICES,
@@ -626,62 +618,63 @@ class AppointmentListView(ManagerRequiredMixin, View):
 
 
 class AppointmentChangeStatusView(ManagerRequiredMixin, View):
-    """Сменить статус записи через API."""
+    """Сменить статус записи."""
 
     def post(self, request, pk):
+        from django.http import Http404
         new_status = request.POST.get('status')
         valid = dict(STATUS_CHOICES)
         if new_status not in valid:
             messages.error(request, 'Недопустимый статус.')
             return redirect('app:appointment_list')
-
-        if new_status == 'completed' and not VisitController.get_by_appointment(pk):
-            return redirect('app:start_visit', pk=pk)
-
         try:
-            appointment = AppointmentController.get_by_id(pk)
-            old_status = appointment.get('status', '')
-            AppointmentController.update_status(pk, new_status)
-            AppointmentLogController.create({
-                'appointment_id': pk,
-                'old_status': old_status,
-                'new_status': new_status,
-                'comment': f"Статус изменён пользователем {request.user.username}",
-            })
-            messages.success(request, f'Запись #{pk}: статус «{valid[new_status]}».')
-        except Exception as e:
-            messages.error(request, f'Ошибка: {e}')
+            appointment = ApptModel.objects.get(pk=pk)
+        except ApptModel.DoesNotExist:
+            raise Http404
+        old_status = appointment.status
+        if new_status == 'completed' and not hasattr(appointment, 'visit'):
+            return redirect('app:start_visit', pk=pk)
+        appointment.status = new_status
+        appointment.save()
+        from .models import AppointmentLog
+        AppointmentLog.objects.create(
+            appointment=appointment,
+            changed_by=request.user,
+            old_status=old_status,
+            new_status=new_status,
+        )
+        messages.success(request, f'Запись #{pk}: статус «{valid[new_status]}».')
         return redirect('app:appointment_list')
 
 
 class AppointmentDeleteView(ManagerRequiredMixin, View):
-    """Удалить запись на приём через API."""
+    """Удалить запись на приём."""
 
     def post(self, request, pk):
-        try:
-            AppointmentController.delete(pk)
-            messages.success(request, f'Запись #{pk} удалена.')
-        except Exception as e:
-            messages.error(request, f'Ошибка: {e}')
+        ApptModel.objects.filter(pk=pk).delete()
+        messages.success(request, f'Запись #{pk} удалена.')
         return redirect('app:appointment_list')
 
 
 class AppointmentCancelView(ManagerRequiredMixin, View):
 
     def post(self, request, pk):
+        from django.http import Http404
         try:
-            appointment = AppointmentController.get_by_id(pk)
-            old_status = appointment.get('status', '')
-            AppointmentController.update_status(pk, 'cancelled')
-            AppointmentLogController.create({
-                'appointment_id': pk,
-                'old_status': old_status,
-                'new_status': 'cancelled',
-                'comment': f"Отменено пользователем {request.user.username}",
-            })
-            messages.success(request, f'Запись #{pk} отменена')
-        except Exception as e:
-            messages.error(request, f'Ошибка: {e}')
+            appointment = ApptModel.objects.get(pk=pk)
+        except ApptModel.DoesNotExist:
+            raise Http404
+        old_status = appointment.status
+        appointment.status = 'cancelled'
+        appointment.save()
+        from .models import AppointmentLog
+        AppointmentLog.objects.create(
+            appointment=appointment,
+            changed_by=request.user,
+            old_status=old_status,
+            new_status='cancelled',
+        )
+        messages.success(request, f'Запись #{pk} отменена')
         return redirect('app:appointment_list')
 
 
@@ -803,24 +796,15 @@ class AppointmentDetailView(StaffRequiredMixin, View):
     template_name = 'doctor/appointment_detail.html'
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            appointment = AppointmentController.get_by_id(pk)
-        except Exception:
-            from django.http import Http404
+            appointment = ApptModel.objects.select_related('patient', 'doctor').get(pk=pk)
+        except ApptModel.DoesNotExist:
             raise Http404
-        visit = VisitController.get_by_appointment(pk)
-        try:
-            patient = PatientController.get_by_id(appointment.get('patient_id'))
-        except Exception:
-            patient = None
-        try:
-            diagnoses = MKBSController.get_diagnoses()
-        except Exception:
-            diagnoses = []
-        try:
-            reports = VisitController.get_reports(visit['id']) if visit else []
-        except Exception:
-            reports = []
+        visit = getattr(appointment, 'visit', None)
+        patient = appointment.patient
+        diagnoses = list(MKBSCode.objects.filter(is_active=True))
+        reports = list(VisitReport.objects.filter(visit=visit)) if visit else []
         return render(request, self.template_name, {
             'appointment': appointment,
             'visit': visit,
@@ -831,62 +815,67 @@ class AppointmentDetailView(StaffRequiredMixin, View):
 
 
 class StartVisitView(StaffRequiredMixin, View):
-    """Завершение приёма с РУЧНЫМ вводом медданных."""
+    """Завершение приёма и создание медкарты."""
     template_name = 'doctor/complete_visit.html'
 
     def get(self, request, pk):
+        from django.http import Http404
         try:
-            appointment = AppointmentController.get_by_id(pk)
-        except Exception:
-            from django.http import Http404
+            appointment = ApptModel.objects.select_related('patient', 'doctor').get(pk=pk)
+        except ApptModel.DoesNotExist:
             raise Http404
-        if VisitController.get_by_appointment(pk):
+        if hasattr(appointment, 'visit'):
             return redirect('app:appointment_detail', pk=pk)
-        try:
-            patient = PatientController.get_by_id(appointment.get('patient_id'))
-        except Exception:
-            patient = None
-        try:
-            diagnoses = MKBSController.get_diagnoses()
-        except Exception:
-            diagnoses = []
+        diagnoses = list(MKBSCode.objects.filter(is_active=True))
         return render(request, self.template_name, {
             'appointment': appointment,
-            'patient': patient,
+            'patient': appointment.patient,
             'diagnoses': diagnoses,
         })
 
     def post(self, request, pk):
+        from django.http import Http404
         try:
-            appointment = AppointmentController.get_by_id(pk)
-        except Exception:
-            from django.http import Http404
+            appointment = ApptModel.objects.select_related('patient', 'doctor').get(pk=pk)
+        except ApptModel.DoesNotExist:
             raise Http404
 
         diagnosis_id = request.POST.get('diagnosis') or None
-        visit = VisitController.get_by_appointment(pk)
-        if not visit:
-            visit = VisitController.create({
-                'appointment_id': pk,
-                'patient_id': appointment.get('patient_id'),
-                'doctor_id': appointment.get('doctor_id'),
-                'anamnesis': request.POST.get('anamnesis', ''),
-                'examination_results': request.POST.get('examination_results', ''),
-                'diagnosis_id': int(diagnosis_id) if diagnosis_id else None,
-                'treatment_plan': request.POST.get('treatment_plan', ''),
-                'prescription': request.POST.get('prescription', ''),
-                'tooth_formula': request.POST.get('tooth_formula', ''),
-            })
+        diagnosis = None
+        if diagnosis_id:
+            diagnosis = MKBSCode.objects.filter(pk=diagnosis_id).first()
 
-        old_status = appointment.get('status', 'scheduled')
-        AppointmentController.update_status(pk, 'completed')
-        AppointmentLogController.create({
-            'appointment_id': pk,
-            'old_status': old_status,
-            'new_status': 'completed',
-            'comment': f"Приём завершён пользователем {request.user.username}",
-        })
-
+        # Убеждаемся что запись Clients для врача существует
+        Clients.objects.get_or_create(
+            login=appointment.doctor.username,
+            defaults={'role': 'dentist'},
+        )
+        if not hasattr(appointment, 'visit'):
+            patient = appointment.patient
+            if not patient:
+                from django.http import Http404
+                raise Http404
+            visit = Visit.objects.create(
+                appointment=appointment,
+                patient=patient,
+                doctor=appointment.doctor,
+                anamnesis=request.POST.get('anamnesis', ''),
+                examination_results=request.POST.get('examination_results', ''),
+                diagnosis=diagnosis,
+                treatment_plan=request.POST.get('treatment_plan', ''),
+                prescription=request.POST.get('prescription', ''),
+                tooth_formula=request.POST.get('tooth_formula', ''),
+            )
+        old_status = appointment.status
+        appointment.status = 'completed'
+        appointment.save()
+        from .models import AppointmentLog
+        AppointmentLog.objects.create(
+            appointment=appointment,
+            changed_by=request.user,
+            old_status=old_status,
+            new_status='completed',
+        )
         messages.success(request, 'Приём завершён, медкарта сохранена.')
         return redirect('app:appointment_detail', pk=pk)
 
@@ -895,36 +884,38 @@ class ProcedureCreateView(DentistRequiredMixin, View):
     template_name = 'doctor/procedure_form.html'
 
     def get(self, request, visit_pk):
+        from django.http import Http404
         try:
-            services = ServiceController.get_all()
-        except Exception:
-            services = []
-        try:
-            visit = VisitController.get_by_id(visit_pk)
-            appointment_id = visit.get('appointment_id')
-        except Exception:
-            appointment_id = None
-        return render(request, self.template_name, {'form': ProcedureForm(), 'visit_pk': visit_pk, 'services': services, 'appointment_id': appointment_id})
+            visit = Visit.objects.select_related('appointment').get(pk=visit_pk)
+        except Visit.DoesNotExist:
+            raise Http404
+        services = list(Service.objects.all())
+        return render(request, self.template_name, {
+            'form': ProcedureForm(), 'visit_pk': visit_pk,
+            'services': services, 'appointment_id': visit.appointment_id,
+        })
 
     def post(self, request, visit_pk):
+        from django.http import Http404
+        try:
+            visit = Visit.objects.select_related('appointment').get(pk=visit_pk)
+        except Visit.DoesNotExist:
+            raise Http404
         form = ProcedureForm(request.POST)
         if form.is_valid():
-            try:
-                visit = VisitController.get_by_id(visit_pk)
-                VisitController.add_procedure(visit_pk, {
-                    'service_id': form.cleaned_data['service_id'],
-                    'quantity': form.cleaned_data['quantity'],
-                })
-                messages.success(request, 'Процедура добавлена')
-                return redirect('app:appointment_detail', pk=visit.get('appointment_id'))
-            except Exception as e:
-                messages.error(request, f'Ошибка API: {e}')
-        try:
-            visit = VisitController.get_by_id(visit_pk)
-            appointment_id = visit.get('appointment_id')
-        except Exception:
-            appointment_id = None
-        return render(request, self.template_name, {'form': form, 'visit_pk': visit_pk, 'appointment_id': appointment_id})
+            from .models import Procedure as ProcModel
+            ProcModel.objects.create(
+                visit=visit,
+                service=form.cleaned_data['service'],
+                quantity=form.cleaned_data['quantity'],
+            )
+            messages.success(request, 'Процедура добавлена')
+            return redirect('app:appointment_detail', pk=visit.appointment_id)
+        services = list(Service.objects.all())
+        return render(request, self.template_name, {
+            'form': form, 'visit_pk': visit_pk,
+            'services': services, 'appointment_id': visit.appointment_id,
+        })
 
 
 class ReferralCreateView(DentistRequiredMixin, View):
@@ -963,57 +954,48 @@ class CreateExtractWordView(LoginRequiredMixin, View):
     login_url = 'login'
 
     def get(self, request, visit_pk):
+        from django.http import Http404
         try:
-            visit = VisitController.get_by_id(visit_pk)
-        except Exception:
-            from django.http import Http404
+            visit = Visit.objects.select_related('patient', 'doctor', 'diagnosis').get(pk=visit_pk)
+        except Visit.DoesNotExist:
             raise Http404
 
         role = getattr(getattr(request.user, 'profile', None), 'role', 'patient')
         if role not in ('admin', 'manager', 'dentist'):
-            patient = PatientHelper.get_patient_for_user(request.user)
-            if not patient or visit.get('patient_id') != patient.get('id'):
+            if not visit.patient or visit.patient.user_id != request.user.id:
                 raise PermissionDenied('Доступ к чужой выписке запрещён.')
 
         doc = self._create_document(visit)
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        response['Content-Disposition'] = f'attachment; filename="extract_{visit.get("id", visit_pk)}.docx"'
+        response['Content-Disposition'] = f'attachment; filename="extract_{visit.pk}.docx"'
         doc.save(response)
         return response
 
     def _create_document(self, visit):
         doc = Document()
         doc.add_heading('Медицинская карта стоматологического больного (форма 043/у)', 0)
-
         self._add_patient_info(doc, visit)
         self._add_medical_info(doc, visit)
         self._add_procedures(doc, visit)
-
         return doc
 
     def _add_patient_info(self, doc, visit):
-        try:
-            patient = PatientController.get_by_id(visit.get('patient_id'))
-            patient_name = patient.get('full_name', '—')
-            birth_date = str(patient.get('birth_date', ''))[:10]
-        except Exception:
-            patient_name = f"Пациент #{visit.get('patient_id')}"
-            birth_date = '—'
-        visit_date = str(visit.get('visit_date', ''))[:10]
-        doc.add_paragraph(f'Пациент: {patient_name}')
-        doc.add_paragraph(f'Дата рождения: {birth_date}')
-        doc.add_paragraph(f'Дата приёма: {visit_date}')
-        doc.add_paragraph(f'Врач: #{visit.get("doctor_id")}')
+        p = visit.patient
+        doc.add_paragraph(f'Пациент: {p.full_name if p else "—"}')
+        doc.add_paragraph(f'Дата рождения: {str(p.birth_date)[:10] if p else "—"}')
+        doc.add_paragraph(f'Дата приёма: {str(visit.visit_date)[:10]}')
+        doc.add_paragraph(f'Врач: {visit.doctor.get_full_name() if visit.doctor else "—"}')
 
     def _add_medical_info(self, doc, visit):
-        doc.add_paragraph(f'Анамнез: {visit.get("anamnesis") or "—"}')
-        doc.add_paragraph(f'Результаты осмотра: {visit.get("examination_results") or "—"}')
-        doc.add_paragraph(f'Диагноз: #{visit.get("diagnosis_id") or "—"}')
-        doc.add_paragraph(f'Лечение: {visit.get("treatment_plan") or "—"}')
-        doc.add_paragraph(f'Назначения: {visit.get("prescription") or "—"}')
-        doc.add_paragraph(f'Зубная формула: {visit.get("tooth_formula") or "—"}')
+        doc.add_paragraph(f'Анамнез: {visit.anamnesis or "—"}')
+        doc.add_paragraph(f'Результаты осмотра: {visit.examination_results or "—"}')
+        diag = visit.diagnosis.name if visit.diagnosis else '—'
+        doc.add_paragraph(f'Диагноз: {diag}')
+        doc.add_paragraph(f'Лечение: {visit.treatment_plan or "—"}')
+        doc.add_paragraph(f'Назначения: {visit.prescription or "—"}')
+        doc.add_paragraph(f'Зубная формула: {visit.tooth_formula or "—"}')
 
     def _add_procedures(self, doc, visit):
         doc.add_paragraph('--- Проведённые манипуляции ---')
@@ -1025,16 +1007,13 @@ class PatientHistoryView(DentistRequiredMixin, View):
     template_name = 'doctor/patient_history.html'
 
     def get(self, request, patient_pk):
+        from django.http import Http404
         try:
-            patient = PatientController.get_by_id(patient_pk)
-        except Exception:
-            from django.http import Http404
+            patient = Patient.objects.get(pk=patient_pk)
+        except Patient.DoesNotExist:
             raise Http404
-        try:
-            visits = VisitController.get_all(patient_id=patient_pk, size=50)
-        except Exception:
-            visits = []
-        medical_info = PatientMedicalInfoController.get(patient_pk)
+        visits = list(Visit.objects.filter(patient=patient).order_by('-visit_date'))
+        medical_info, _ = PatientMedicalInfo.objects.get_or_create(patient=patient)
         return render(request, self.template_name, {
             'patient': patient,
             'visits': visits,
@@ -1046,28 +1025,35 @@ class PatientMedicalInfoView(DentistRequiredMixin, View):
     """Просмотр и редактирование мед. предупреждений (аллергии и пр.) о пациенте."""
     template_name = 'doctor/medical_info_form.html'
 
-    def get(self, request, patient_pk):
+    def _get_patient(self, patient_pk):
+        from django.http import Http404
         try:
-            patient = PatientController.get_by_id(patient_pk)
-        except Exception:
-            from django.http import Http404
+            return Patient.objects.get(pk=patient_pk)
+        except Patient.DoesNotExist:
             raise Http404
-        info = PatientMedicalInfoController.get(patient_pk)
-        form = PatientMedicalInfoForm(initial=info or {})
+
+    def get(self, request, patient_pk):
+        patient = self._get_patient(patient_pk)
+        info, _ = PatientMedicalInfo.objects.get_or_create(patient=patient)
+        form = PatientMedicalInfoForm(initial={
+            'allergies': info.allergies, 'chronic_conditions': info.chronic_conditions,
+            'contraindications': info.contraindications, 'blood_type': info.blood_type,
+            'notes': info.notes,
+        })
         return render(request, self.template_name, {'form': form, 'patient': patient, 'info': info})
 
     def post(self, request, patient_pk):
-        try:
-            patient = PatientController.get_by_id(patient_pk)
-        except Exception:
-            from django.http import Http404
-            raise Http404
+        patient = self._get_patient(patient_pk)
         form = PatientMedicalInfoForm(request.POST)
         if form.is_valid():
-            PatientMedicalInfoController.upsert(patient_pk, form.cleaned_data)
+            cd = form.cleaned_data
+            info, _ = PatientMedicalInfo.objects.get_or_create(patient=patient)
+            for field, value in cd.items():
+                setattr(info, field, value)
+            info.save()
             messages.success(request, 'Мед. информация пациента сохранена')
             return redirect('app:patient_history', patient_pk=patient_pk)
-        info = PatientMedicalInfoController.get(patient_pk)
+        info, _ = PatientMedicalInfo.objects.get_or_create(patient=patient)
         return render(request, self.template_name, {'form': form, 'patient': patient, 'info': info})
 
 
@@ -1075,47 +1061,89 @@ class VisitReportCreateView(StaffRequiredMixin, View):
     """Отчёт после приёма."""
     template_name = 'doctor/report_form.html'
 
-    def get(self, request, visit_pk):
+    def _get_visit(self, visit_pk):
+        from django.http import Http404
         try:
-            visit = VisitController.get_by_id(visit_pk)
-            reports = VisitController.get_reports(visit_pk)
-        except Exception:
-            from django.http import Http404
+            return Visit.objects.get(pk=visit_pk)
+        except Visit.DoesNotExist:
             raise Http404
+
+    def get(self, request, visit_pk):
+        visit = self._get_visit(visit_pk)
+        reports = list(VisitReport.objects.filter(visit=visit))
         return render(request, self.template_name, {'form': VisitReportForm(), 'visit': visit, 'reports': reports})
 
     def post(self, request, visit_pk):
-        try:
-            visit = VisitController.get_by_id(visit_pk)
-        except Exception:
-            from django.http import Http404
-            raise Http404
+        visit = self._get_visit(visit_pk)
         form = VisitReportForm(request.POST)
         if form.is_valid():
-            VisitController.create_report(visit_pk, form.cleaned_data)
-            messages.success(request, 'Отчёт сохранён')
-            return redirect('app:visit_report', visit_pk=visit_pk)
-        reports = VisitController.get_reports(visit_pk)
+            cd = form.cleaned_data
+            if not cd.get('summary'):
+                form.add_error('summary', 'Обязательное поле.')
+            else:
+                VisitReport.objects.update_or_create(
+                    visit=visit,
+                    defaults={
+                        'author': request.user,
+                        'title': cd.get('title', ''),
+                        'summary': cd['summary'],
+                        'recommendations': cd.get('recommendations', ''),
+                        'complications': cd.get('complications', ''),
+                    }
+                )
+                messages.success(request, 'Отчёт сохранён')
+                return redirect('app:visit_report', visit_pk=visit_pk)
+        reports = list(VisitReport.objects.filter(visit=visit))
         return render(request, self.template_name, {'form': form, 'visit': visit, 'reports': reports})
 
 
 class VisitReportUpdateView(StaffRequiredMixin, View):
-    """Редактирование конкретного отчёта (не поддерживается API — заглушка)."""
+    """Редактирование отчёта о визите."""
     template_name = 'doctor/report_form.html'
 
     def get(self, request, pk):
-        messages.info(request, 'Редактирование отчётов доступно через API')
-        return redirect('app:appointment_list')
+        from django.http import Http404
+        try:
+            report = VisitReport.objects.get(pk=pk)
+        except VisitReport.DoesNotExist:
+            raise Http404
+        form = VisitReportForm(initial={
+            'title': report.title, 'summary': report.summary,
+            'recommendations': report.recommendations, 'complications': report.complications,
+        })
+        return render(request, self.template_name, {
+            'form': form, 'report': report,
+            'editing': report, 'visit': report.visit,
+        })
 
     def post(self, request, pk):
-        return redirect('app:appointment_list')
+        from django.http import Http404
+        try:
+            report = VisitReport.objects.get(pk=pk)
+        except VisitReport.DoesNotExist:
+            raise Http404
+        form = VisitReportForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            report.title = cd.get('title', '')
+            report.summary = cd['summary']
+            report.recommendations = cd.get('recommendations', '')
+            report.complications = cd.get('complications', '')
+            report.save()
+            messages.success(request, 'Отчёт обновлён')
+            return redirect('app:visit_report', visit_pk=report.visit_id)
+        return render(request, self.template_name, {
+            'form': form, 'report': report,
+            'editing': report, 'visit': report.visit,
+        })
 
 
 class VisitReportDeleteView(StaffRequiredMixin, View):
-    """Удаление отчёта о приёме (не поддерживается API — заглушка)."""
+    """Удаление отчёта о приёме."""
 
     def post(self, request, pk):
-        messages.info(request, 'Удаление отчётов доступно через API')
+        VisitReport.objects.filter(pk=pk).delete()
+        messages.success(request, 'Отчёт удалён')
         return redirect('app:appointment_list')
 
 
@@ -1373,10 +1401,14 @@ class ImpersonateUserView(AdminRequiredMixin, View):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def api_services(request):
-    try:
-        services = ServiceController.get_all()
-    except Exception:
-        services = []
+    qs = Service.objects.all().values('id', 'code', 'name', 'cost', 'duration_minutes', 'material_cost')
+    if not qs.exists():
+        try:
+            services = ServiceController.get_all()
+        except Exception:
+            services = []
+    else:
+        services = list(qs)
     return Response(services)
 
 

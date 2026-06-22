@@ -16,6 +16,7 @@ from .views import (
     UserProfileViewSet,
     VisitViewSet,
     WorkOrderViewSet,
+    mkbs_validate,
 )
 
 router = DefaultRouter()
@@ -36,4 +37,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('fastapi-status/', FastAPIStatusAPIView.as_view(), name='fastapi-status'),
     path('me/', MeAPIView.as_view(), name='me'),
+    path('mkbs/validate/<str:code>/', mkbs_validate, name='mkbs-validate'),
 ]

@@ -1,5 +1,7 @@
+import re
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.utils import timezone
 from .models import UserProfile
 
 
@@ -28,6 +30,14 @@ class PatientSerializer(serializers.Serializer):
     card_number = serializers.CharField(read_only=True)
     user_id = serializers.IntegerField(required=False, allow_null=True)
 
+    def validate_phone(self, value):
+        digits = re.sub(r'\D', '', value)
+        if len(digits) < 10:
+            raise serializers.ValidationError('Некорректный номер телефона.')
+        if digits.startswith('8') and len(digits) == 11:
+            digits = '7' + digits[1:]
+        return digits
+
 
 class AppointmentSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
@@ -36,6 +46,11 @@ class AppointmentSerializer(serializers.Serializer):
     datetime = serializers.DateTimeField()
     status = serializers.ChoiceField(choices=['scheduled', 'completed', 'cancelled'])
     created_at = serializers.DateTimeField(read_only=True)
+
+    def validate_datetime(self, value):
+        if value <= timezone.now():
+            raise serializers.ValidationError('Дата приёма должна быть в будущем.')
+        return value
 
 
 class MedicalRecordSerializer(serializers.Serializer):

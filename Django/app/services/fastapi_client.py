@@ -267,7 +267,7 @@ def sync_user_to_fastapi(user, role):
             timeout=3,
         )
         if resp.status_code in (200, 201):
-            return resp.json().get('id')
+            return True
         if resp.status_code == 400 and "уже существует" in resp.text.lower():
             # Уже есть — найдём ID
             all_clients = requests.get(f"{BASE_URL}/api/v1/clients/", headers=headers, timeout=3).json()
@@ -276,4 +276,4 @@ def sync_user_to_fastapi(user, role):
                     return c.get('id')
     except Exception as e:
         print(f"FastAPI sync error: {e}")
-    return None
+    return False

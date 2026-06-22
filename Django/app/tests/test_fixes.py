@@ -514,7 +514,7 @@ class TestApiParityEndpoints:
         # Assert
         assert r.status_code == 201
 
-    def test_mkbs_validate_known_code(self, dentist_client):
+    def test_mkbs_validate_known_code(self, dentist_client, mkb):
         """Валидация известного кода МКБ возвращает valid=True."""
         # Act
         r = dentist_client.get('/api/v2/mkbs/validate/K02.0/')

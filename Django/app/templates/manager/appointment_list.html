@@ -29,8 +29,8 @@
                 {% for a in appointments %}
                 <tr>
                     <td>{{ a.datetime|date:"d.m.Y H:i" }}</td>
-                    <td class="fw-bold">{{ a.patient_name }}</td>
-                    <td>{{ a.doctor_name }}</td>
+                    <td class="fw-bold">{{ a.patient.full_name }}</td>
+                    <td>{{ a.doctor.get_full_name }}</td>
                     <td>
                         {% if a.status == 'scheduled' %}<span class="badge bg-warning text-dark">Запланирован</span>
                         {% elif a.status == 'completed' %}<span class="badge bg-success">Завершён</span>

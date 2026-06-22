@@ -113,7 +113,13 @@ class DoctorForm(forms.Form):
         profile.phone = data.get('phone', '')
         profile.cabinet = data.get('cabinet', '')
         profile.save()
-        # Синхронизируем с FastAPI
+        # Создаём или обновляем локальную запись Clients
+        from .models import Clients
+        Clients.objects.update_or_create(
+            login=user.username,
+            defaults={'role': 'dentist'},
+        )
+        # Синхронизируем с FastAPI (необязательно)
         try:
             from .controllers import ClientController
             ClientController.create({'login': user.username, 'password': data['password'], 'role': 'dentist'})
@@ -126,7 +132,7 @@ class DoctorForm(forms.Form):
 
 class VisitReportForm(forms.Form):
     """Отчёт о приёме (данные уходят в FastAPI)."""
-    title = forms.CharField(max_length=255, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    title = forms.CharField(max_length=255, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
     summary = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}))
     recommendations = forms.CharField(required=False, widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}))
     complications = forms.CharField(required=False, widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}))
@@ -135,7 +141,7 @@ class VisitReportForm(forms.Form):
 # ==================== ФОРМЫ ЗАПИСЕЙ НА ПРИЕМ ====================
 
 class AppointmentForm(forms.Form):
-    """Форма создания записи. ID пациента/врача берутся из API."""
+    """Форма создания записи на приём."""
     patient_id = forms.IntegerField(
         label='ID Пациента',
         widget=forms.NumberInput(attrs={'class': 'form-control'}),
@@ -149,6 +155,19 @@ class AppointmentForm(forms.Form):
         widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
         input_formats=['%Y-%m-%dT%H:%M'],
     )
+
+    def save(self):
+        from .models import Appointment, Patient
+        from django.contrib.auth.models import User as _User
+        data = self.cleaned_data
+        patient = Patient.objects.get(pk=data['patient_id'])
+        doctor = _User.objects.get(pk=data['doctor_id'])
+        return Appointment.objects.create(
+            patient=patient,
+            doctor=doctor,
+            datetime=data['datetime'],
+            status='scheduled',
+        )
 
 
 class AdminAppointmentForm(forms.Form):
@@ -178,8 +197,12 @@ class VisitForm(forms.Form):
 
 
 class ProcedureForm(forms.Form):
-    """Форма процедуры (данные уходят в FastAPI)."""
-    service_id = forms.IntegerField(label='Услуга (ID)', widget=forms.NumberInput(attrs={'class': 'form-control'}))
+    """Форма процедуры."""
+    from .models import Service as _Service
+    service = forms.ModelChoiceField(
+        queryset=_Service.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
     quantity = forms.IntegerField(initial=1, min_value=1, widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1}))
 
 
