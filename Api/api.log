@@ -1,0 +1,83 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\__main__.py", line 4, in <module>
+    uvicorn.main()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\click\core.py", line 1524, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\click\core.py", line 1445, in main
+    rv = self.invoke(ctx)
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\click\core.py", line 1308, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\click\core.py", line 877, in invoke
+    return callback(*args, **kwargs)
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\main.py", line 410, in main
+    run(
+    ~~~^
+        app,
+        ^^^^
+    ...<45 lines>...
+        h11_max_incomplete_event_size=h11_max_incomplete_event_size,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\main.py", line 577, in run
+    server.run()
+    ~~~~~~~~~~^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\server.py", line 65, in run
+    return asyncio.run(self.serve(sockets=sockets))
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 196, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\asyncio\runners.py", line 119, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\asyncio\base_events.py", line 725, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\server.py", line 69, in serve
+    await self._serve(sockets)
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\server.py", line 76, in _serve
+    config.load()
+    ~~~~~~~~~~~^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\config.py", line 434, in load
+    self.loaded_app = import_from_string(self.app)
+                      ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\importer.py", line 22, in import_from_string
+    raise exc from None
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1395, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "C:\Users\Pavel\OneDrive\Desktop\Api\app\main.py", line 4, in <module>
+    from app.api.routers import auth, client, manager, dentist, extended, mkb_codes
+  File "C:\Users\Pavel\OneDrive\Desktop\Api\app\api\routers\auth.py", line 5, in <module>
+    from app.core.database import get_db
+  File "C:\Users\Pavel\OneDrive\Desktop\Api\app\core\database.py", line 6, in <module>
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+    ...<2 lines>...
+        # Важно: не проверять существование базы при создании engine
+    )
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\ext\asyncio\engine.py", line 120, in create_async_engine
+    sync_engine = _create_engine(url, **kw)
+  File "<string>", line 2, in create_engine
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\util\deprecations.py", line 281, in warned
+    return fn(*args, **kwargs)  # type: ignore[no-any-return]
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\engine\create.py", line 599, in create_engine
+    dbapi = dbapi_meth(**dbapi_args)
+  File "C:\Users\Pavel\AppData\Local\Programs\Python\Python313\Lib\site-packages\sqlalchemy\dialects\postgresql\asyncpg.py", line 1091, in import_dbapi
+    return AsyncAdapt_asyncpg_dbapi(__import__("asyncpg"))
+                                    ~~~~~~~~~~^^^^^^^^^^^
+ModuleNotFoundError: No module named 'asyncpg'
