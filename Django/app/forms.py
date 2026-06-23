@@ -128,6 +128,45 @@ class DoctorForm(forms.Form):
         return user
 
 
+class ManagerForm(forms.Form):
+    """Создание менеджера регистратуры (User + UserProfile)."""
+    username = forms.CharField(
+        label='Логин', max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'manager.ivanova'}),
+    )
+    first_name = forms.CharField(label='Имя', max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(label='Фамилия', max_length=150, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(label='Email', required=False, widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(label='Пароль', min_length=4, widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    phone = forms.CharField(label='Телефон', max_length=20, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError('Пользователь с таким логином уже существует.')
+        return username
+
+    def save(self):
+        data = self.cleaned_data
+        user = User.objects.create_user(
+            username=data['username'],
+            password=data['password'],
+            email=data.get('email', ''),
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+        )
+        profile = user.profile
+        profile.role = 'manager'
+        profile.phone = data.get('phone', '')
+        profile.save()
+        from .models import Clients
+        Clients.objects.update_or_create(
+            login=user.username,
+            defaults={'role': 'manager'},
+        )
+        return user
+
+
 # ==================== ФОРМЫ ОТЧЁТОВ ====================
 
 class VisitReportForm(forms.Form):

@@ -26,8 +26,7 @@ class PatientResponseSchema(BaseModel):
     email: Optional[str] = None
     created_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 @router.get("/", response_model=List[PatientResponseSchema], summary="Получить всех пациентов")
 async def get_patients(db: AsyncSession = Depends(get_db)):

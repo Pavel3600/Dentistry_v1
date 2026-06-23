@@ -63,14 +63,15 @@ class MKBCodeSchema(BaseModel):
     name: str
     description: Optional[str] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "code": "K02.1",
                 "name": "Кариес дентина",
                 "description": "Кариозное поражение с вовлечением дентина"
             }
         }
+    }
 
 
 @router.get("/codes", response_model=List[MKBCodeSchema], summary="Получить все МКБ коды")

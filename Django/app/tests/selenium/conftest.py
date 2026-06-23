@@ -7,7 +7,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 @pytest.fixture(autouse=True)
 def mock_fastapi_available():
-    """Bypass FastAPI availability check so login works in selenium tests."""
+    """Bypass FastAPI availability check so login works in selenium tests.
+
+    Patches both the Python-side availability flag and the fastapi_ping view
+    so that the JS poller in base.html receives {"online": true} and does not
+    reload the page during every browser interaction.
+    """
     with patch("app.utils.is_fastapi_available", return_value=True), \
          patch("app.services.fastapi_health.get_fastapi_status",
                return_value={"available": True, "url": "http://localhost:9999",

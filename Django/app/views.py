@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, Http404
 from django.core.exceptions import PermissionDenied
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -32,7 +32,7 @@ from .controllers import (
 from .forms import (PatientForm, AppointmentForm, VisitForm, ProcedureForm,
                     ReferralForm, ServiceForm, MaterialForm, MkbCodeForm,
                     VisitSearchForm, RegistrationForm, AdminAppointmentForm,
-                    DoctorForm, PatientMedicalInfoForm, VisitReportForm)
+                    DoctorForm, ManagerForm, PatientMedicalInfoForm, VisitReportForm)
 from django.contrib.auth.models import User
 from django.contrib.auth import views as auth_views, login as auth_login, logout
 from .services.fastapi_client import fastapi_client
@@ -208,7 +208,10 @@ class ServiceListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/service_list.html'
 
     def get(self, request):
-        services = list(Service.objects.all())
+        try:
+            services = ServiceController.get_all()
+        except Exception:
+            services = []
         return render(request, self.template_name, {'services': services})
 
 
@@ -221,10 +224,12 @@ class ServiceCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = ServiceForm(request.POST)
         if form.is_valid():
-            cd = form.cleaned_data
-            Service.objects.create(**cd)
-            messages.success(request, 'Услуга успешно создана')
-            return redirect('app:service_list')
+            try:
+                ServiceController.create(form.cleaned_data)
+                messages.success(request, 'Услуга успешно создана')
+                return redirect('app:service_list')
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
@@ -232,37 +237,33 @@ class ServiceUpdateView(AdminRequiredMixin, View):
     template_name = 'admin_panel/service_form.html'
 
     def get(self, request, pk):
-        from django.http import Http404
         try:
-            service = Service.objects.get(pk=pk)
-        except Service.DoesNotExist:
+            service = ServiceController.get_by_id(pk)
+        except Exception:
             raise Http404
-        form = ServiceForm(initial={'code': service.code, 'name': service.name,
-                                    'cost': service.cost, 'duration_minutes': service.duration_minutes,
-                                    'material_cost': service.material_cost})
+        form = ServiceForm(initial=service)
         return render(request, self.template_name, {'form': form, 'object': service})
 
     def post(self, request, pk):
-        from django.http import Http404
-        try:
-            service = Service.objects.get(pk=pk)
-        except Service.DoesNotExist:
-            raise Http404
         form = ServiceForm(request.POST)
         if form.is_valid():
-            for k, v in form.cleaned_data.items():
-                setattr(service, k, v)
-            service.save()
-            messages.success(request, 'Услуга успешно обновлена')
-            return redirect('app:service_list')
+            try:
+                ServiceController.update(pk, form.cleaned_data)
+                messages.success(request, 'Услуга успешно обновлена')
+                return redirect('app:service_list')
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
 class ServiceDeleteView(AdminRequiredMixin, View):
 
     def post(self, request, pk):
-        Service.objects.filter(pk=pk).delete()
-        messages.success(request, 'Услуга удалена')
+        try:
+            ServiceController.delete(pk)
+            messages.success(request, 'Услуга удалена')
+        except Exception as e:
+            messages.error(request, f'Ошибка FastAPI: {e}')
         return redirect('app:service_list')
 
 
@@ -270,7 +271,10 @@ class MaterialListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/material_list.html'
 
     def get(self, request):
-        materials = list(Material.objects.all())
+        try:
+            materials = MaterialController.get_all()
+        except Exception:
+            materials = []
         return render(request, self.template_name, {'materials': materials})
 
 
@@ -283,10 +287,12 @@ class MaterialCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = MaterialForm(request.POST)
         if form.is_valid():
-            cd = form.cleaned_data
-            Material.objects.create(**cd)
-            messages.success(request, 'Материал успешно создан')
-            return redirect('app:material_list')
+            try:
+                MaterialController.create(form.cleaned_data)
+                messages.success(request, 'Материал успешно создан')
+                return redirect('app:material_list')
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
@@ -294,35 +300,33 @@ class MaterialUpdateView(AdminRequiredMixin, View):
     template_name = 'admin_panel/material_form.html'
 
     def get(self, request, pk):
-        from django.http import Http404
         try:
-            material = Material.objects.get(pk=pk)
-        except Material.DoesNotExist:
+            material = MaterialController.get_by_id(pk)
+        except Exception:
             raise Http404
-        form = MaterialForm(initial={'name': material.name, 'unit': material.unit, 'price_per_unit': material.price_per_unit})
+        form = MaterialForm(initial=material)
         return render(request, self.template_name, {'form': form, 'object': material})
 
     def post(self, request, pk):
-        from django.http import Http404
-        try:
-            material = Material.objects.get(pk=pk)
-        except Material.DoesNotExist:
-            raise Http404
         form = MaterialForm(request.POST)
         if form.is_valid():
-            for k, v in form.cleaned_data.items():
-                setattr(material, k, v)
-            material.save()
-            messages.success(request, 'Материал успешно обновлён')
-            return redirect('app:material_list')
+            try:
+                MaterialController.update(pk, form.cleaned_data)
+                messages.success(request, 'Материал успешно обновлён')
+                return redirect('app:material_list')
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
 class MaterialDeleteView(AdminRequiredMixin, View):
 
     def post(self, request, pk):
-        Material.objects.filter(pk=pk).delete()
-        messages.success(request, 'Материал удалён')
+        try:
+            MaterialController.delete(pk)
+            messages.success(request, 'Материал удалён')
+        except Exception as e:
+            messages.error(request, f'Ошибка FastAPI: {e}')
         return redirect('app:material_list')
 
 
@@ -330,7 +334,10 @@ class MkbCodeListView(AdminRequiredMixin, View):
     template_name = 'admin_panel/mkb_list.html'
 
     def get(self, request):
-        codes = list(MKBSCode.objects.all())
+        try:
+            codes = MKBSController.get_all()
+        except Exception:
+            codes = []
         return render(request, self.template_name, {'codes': codes})
 
 
@@ -344,10 +351,12 @@ class MkbCodeCreateView(AdminRequiredMixin, View):
     def post(self, request):
         form = MkbCodeForm(request.POST)
         if form.is_valid():
-            cd = form.cleaned_data
-            MKBSCode.objects.create(**cd)
-            messages.success(request, 'Код МКБ успешно создан')
-            return redirect(self.success_url)
+            try:
+                MKBSController.create(form.cleaned_data)
+                messages.success(request, 'Код МКБ успешно создан')
+                return redirect(self.success_url)
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
@@ -356,29 +365,22 @@ class MkbCodeUpdateView(AdminRequiredMixin, View):
     success_url = reverse_lazy('app:mkb_list')
 
     def get(self, request, pk):
-        from django.http import Http404
         try:
-            code = MKBSCode.objects.get(pk=pk)
-        except MKBSCode.DoesNotExist:
+            code = MKBSController.get_by_id(pk)
+        except Exception:
             raise Http404
-        form = MkbCodeForm(initial={'code': code.code, 'name': code.name,
-                                    'category': code.category, 'parent_code': code.parent_code,
-                                    'is_active': code.is_active})
+        form = MkbCodeForm(initial=code)
         return render(request, self.template_name, {'form': form, 'code': code})
 
     def post(self, request, pk):
-        from django.http import Http404
-        try:
-            code = MKBSCode.objects.get(pk=pk)
-        except MKBSCode.DoesNotExist:
-            raise Http404
         form = MkbCodeForm(request.POST)
         if form.is_valid():
-            for k, v in form.cleaned_data.items():
-                setattr(code, k, v)
-            code.save()
-            messages.success(request, 'Код МКБ обновлён')
-            return redirect(self.success_url)
+            try:
+                MKBSController.update(pk, form.cleaned_data)
+                messages.success(request, 'Код МКБ обновлён')
+                return redirect(self.success_url)
+            except Exception as e:
+                messages.error(request, f'Ошибка FastAPI: {e}')
         return render(request, self.template_name, {'form': form})
 
 
@@ -386,8 +388,11 @@ class MkbCodeDeleteView(AdminRequiredMixin, View):
     success_url = reverse_lazy('app:mkb_list')
 
     def post(self, request, pk):
-        MKBSCode.objects.filter(pk=pk).delete()
-        messages.success(request, f'Код #{pk} удалён')
+        try:
+            MKBSController.delete(pk)
+            messages.success(request, f'Код #{pk} удалён')
+        except Exception as e:
+            messages.error(request, f'Ошибка FastAPI: {e}')
         return redirect(self.success_url)
 
 
@@ -492,41 +497,17 @@ class AppointmentCreateView(ManagerRequiredMixin, View):
     success_url = reverse_lazy('app:appointment_list')
 
     def _get_context(self, form):
-        # Грузим пациентов постранично (API лимит 100 за раз)
-        patients = []
-        try:
-            for page in range(1, 20):
-                chunk = PatientController.get_all(page=page, size=100)
-                if not chunk:
-                    break
-                patients.extend(chunk)
-                if len(chunk) < 100:
-                    break
-        except Exception:
-            patients = []
-        # Грузим всех клиентов и фильтруем по роли dentist
-        try:
-            doctors = ClientController.get_doctors()
-        except Exception:
-            doctors = []
-        # Если нет врачей через FastAPI — синхронизируем Django-врачей и пробуем снова
-        if not doctors:
-            from app.models import UserProfile
-            from app.services.fastapi_client import sync_user_to_fastapi
-            django_dentists = UserProfile.objects.filter(role='dentist').select_related('user')
-            synced = []
-            for p in django_dentists:
-                fastapi_id = sync_user_to_fastapi(p.user, 'dentist')
-                if fastapi_id:
-                    synced.append({'id': fastapi_id, 'login': p.user.get_full_name() or p.user.username})
-            if synced:
-                doctors = synced
-            else:
-                # Последний шанс — запросить снова
-                try:
-                    doctors = ClientController.get_doctors()
-                except Exception:
-                    doctors = []
+        # Пациенты — только из локальной Django-БД (чтобы pk совпадал при сохранении)
+        patients = list(Patient.objects.all().order_by('full_name'))
+        # Врачи — Django-пользователи с ролью dentist
+        from app.models import UserProfile as UP
+        doctor_profiles = UP.objects.filter(role='dentist').select_related('user').order_by(
+            'user__last_name', 'user__first_name'
+        )
+        doctors = [
+            {'id': p.user.pk, 'login': p.user.get_full_name() or p.user.username}
+            for p in doctor_profiles
+        ]
         return {'form': form, 'patients': patients, 'doctors': doctors}
 
     def get(self, request, *args, **kwargs):
@@ -703,7 +684,48 @@ class DoctorCreateView(ManagerRequiredMixin, View):
         form = DoctorForm(request.POST)
         if form.is_valid():
             doctor = form.save()
-            messages.success(request, f'Врач {doctor.get_full_name() or doctor.username} добавлен')
+            name = doctor.get_full_name() or doctor.username
+            password = form.cleaned_data['password']
+            messages.success(
+                request,
+                f'Врач {name} успешно добавлен. '
+                f'Логин: {doctor.username} | Пароль: {password}'
+            )
+            return redirect(self.success_url)
+        messages.error(request, 'Проверьте правильность заполнения полей.')
+        return render(request, self.template_name, {'form': form})
+
+
+class ManagerListView(AdminRequiredMixin, View):
+    """Список менеджеров регистратуры — только для администратора."""
+    template_name = 'manager/manager_list.html'
+
+    def get(self, request):
+        managers = UserProfile.objects.filter(role='manager').select_related('user').order_by(
+            'user__last_name', 'user__first_name'
+        )
+        return render(request, self.template_name, {'managers': managers})
+
+
+class ManagerCreateView(AdminRequiredMixin, View):
+    """Создание менеджера регистратуры — только для администратора."""
+    template_name = 'manager/manager_form.html'
+    success_url = reverse_lazy('app:manager_list')
+
+    def get(self, request):
+        return render(request, self.template_name, {'form': ManagerForm()})
+
+    def post(self, request):
+        form = ManagerForm(request.POST)
+        if form.is_valid():
+            mgr = form.save()
+            name = mgr.get_full_name() or mgr.username
+            password = form.cleaned_data['password']
+            messages.success(
+                request,
+                f'Менеджер {name} успешно добавлен. '
+                f'Логин: {mgr.username} | Пароль: {password}'
+            )
             return redirect(self.success_url)
         messages.error(request, 'Проверьте правильность заполнения полей.')
         return render(request, self.template_name, {'form': form})

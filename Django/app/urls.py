@@ -39,6 +39,8 @@ urlpatterns = [
     path('manager/patients/<int:pk>/edit/', views.PatientUpdateView.as_view(), name='patient_edit'),
     path('manager/doctors/', views.DoctorListView.as_view(), name='doctor_list'),
     path('manager/doctors/create/', views.DoctorCreateView.as_view(), name='doctor_create'),
+    path('admin/managers/', views.ManagerListView.as_view(), name='manager_list'),
+    path('admin/managers/create/', views.ManagerCreateView.as_view(), name='manager_create'),
     path('manager/appointments/', views.AppointmentListView.as_view(), name='appointment_list'),
     path('manager/appointments/create/', views.AppointmentCreateView.as_view(), name='appointment_create'),
     path('manager/appointments/<int:pk>/cancel/', views.AppointmentCancelView.as_view(), name='appointment_cancel'),
@@ -78,6 +80,7 @@ urlpatterns = [
     path('api/appointments/', views.api_appointments, name='api_appointments'),
 
     # FastAPI интеграция
+    path('fastapi/ping/', views.fastapi_ping, name='fastapi_ping'),
     path('fastapi/demo/', views.FastAPIDemoView.as_view(), name='fastapi_demo'),
     path('fastapi/services/', views.FastAPIServicesView.as_view(), name='fastapi_services'),
     path('fastapi/status/', views.FastAPIServiceStatusView.as_view(), name='fastapi_status'),

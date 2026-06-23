@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Менеджеры регистратуры{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="text-teal"><i class="fas fa-user-tie"></i> Менеджеры регистратуры</h2>
+    <a href="{% url 'app:manager_create' %}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Добавить менеджера
+    </a>
+</div>
+
+<div class="card card-custom">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>ФИО</th><th>Логин</th><th>Email</th><th>Телефон</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in managers %}
+                <tr>
+                    <td class="fw-bold">{{ m.user.get_full_name|default:m.user.username }}</td>
+                    <td>{{ m.user.username }}</td>
+                    <td>{{ m.user.email|default:"—" }}</td>
+                    <td>{{ m.phone|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-4">Менеджеры не добавлены</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -49,7 +49,7 @@ async def get_appointments(db: AsyncSession = Depends(get_db)):
 @router.post("/appointments", response_model=dict, summary="Добавить запись")
 async def create_appointment(appointment: AppointmentSchema):
     """Добавить новую запись на приём"""
-    appt_data = appointment.dict()
+    appt_data = appointment.model_dump()
     appt_data["id"] = len(APPOINTMENTS_DB) + 1
     appt_data["created_at"] = datetime.now().isoformat()
     APPOINTMENTS_DB.append(appt_data)
@@ -109,7 +109,7 @@ async def get_medical_records():
 @router.post("/medical-records", response_model=dict, summary="Добавить медицинскую запись")
 async def create_medical_record(record: MedicalRecordSchema):
     """Добавить новую медицинскую запись"""
-    record_data = record.dict()
+    record_data = record.model_dump()
     record_data["id"] = len(MEDICAL_RECORDS_DB) + 1
     record_data["created_at"] = datetime.now().isoformat()
     MEDICAL_RECORDS_DB.append(record_data)
@@ -131,7 +131,7 @@ async def get_studies():
 @router.post("/studies", response_model=dict, summary="Добавить исследование")
 async def create_study(study: StudySchema):
     """Добавить новое исследование"""
-    study_data = study.dict()
+    study_data = study.model_dump()
     study_data["id"] = len(STUDIES_DB) + 1
     study_data["created_at"] = datetime.now().isoformat()
     STUDIES_DB.append(study_data)

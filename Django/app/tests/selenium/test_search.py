@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.contrib.auth.models import User
-from app.models import Patient, Appointment, Visit, Clients
+from app.models import Patient, Appointment, Visit
 
 @pytest.mark.selenium
 @pytest.mark.usefixtures("chrome_driver")
@@ -23,16 +23,15 @@ class TestSearch(StaticLiveServerTestCase):
             gender='M',
             phone="111111"
         )
-        doctor_client = Clients.objects.get(login=self.dentist.username)
         app = Appointment.objects.create(
-            patient_id=self.patient.id,
-            doctor_id=doctor_client.id,
+            patient=self.patient,
+            doctor=self.dentist,
             datetime="2026-07-01 10:00"
         )
         Visit.objects.create(
             appointment=app,
             patient=self.patient,
-            doctor=doctor_client
+            doctor=self.dentist
         )
 
     def _login(self, username, password):

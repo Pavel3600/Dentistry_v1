@@ -3,27 +3,273 @@
 
 {% block title %}Дневник врача{% endblock %}
 
+{% block extra_css %}
+<style>
+    :root {
+        --doctor-primary: #2563eb;
+        --doctor-primary-dark: #1d4ed8;
+        --doctor-bg: #eff6ff;
+    }
+
+    .doctor-container {
+        background: var(--doctor-bg);
+        min-height: calc(100vh - 200px);
+        padding: 2rem 0;
+    }
+
+    .stat-card-doctor {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        transition: all 0.3s;
+        border-left: 4px solid var(--doctor-primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stat-card-doctor:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    .stat-card-doctor .stat-icon {
+        font-size: 2rem;
+        color: var(--doctor-primary);
+    }
+
+    .stat-card-doctor .stat-value {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: #1f2937;
+    }
+
+    .appointment-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+        border: 1px solid #e5e7eb;
+    }
+
+    .appointment-card:hover {
+        border-color: var(--doctor-primary);
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    }
+
+    .time-badge {
+        background: #eff6ff;
+        color: var(--doctor-primary);
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .quick-action-btn {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        text-align: center;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: block;
+        color: inherit;
+    }
+
+    .quick-action-btn:hover {
+        border-color: var(--doctor-primary);
+        background: #eff6ff;
+        transform: translateY(-3px);
+        color: inherit;
+    }
+
+    .quick-action-btn i {
+        font-size: 1.5rem;
+        color: var(--doctor-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .status-scheduled { color: #2563eb; }
+    .status-completed  { color: #16a34a; }
+    .status-cancelled  { color: #dc2626; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  <h2>Добро пожаловать, {{ doctor_name }}</h2>
-  <p>Сегодня: {{ today }}</p>
+<div class="doctor-container">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">
+                    <i class="fas fa-user-md me-2" style="color: var(--doctor-primary);"></i>
+                    Добро пожаловать, {{ doctor_name }}
+                </h2>
+                <p class="text-muted mb-0">Сегодня: {{ today }}</p>
+            </div>
+            <span class="badge p-2" style="background: var(--doctor-primary);">
+                <i class="fas fa-user me-1"></i> {{ request.user.username }}
+            </span>
+        </div>
 
-  <h4>Приёмы сегодня ({{ today_appointments|length }})</h4>
-  <ul>
-    {% for appt in today_appointments %}
-      <li>{{ appt.datetime }} — пациент #{{ appt.patient_id }}</li>
-    {% empty %}
-      <li>Нет приёмов</li>
-    {% endfor %}
-  </ul>
+        <!-- Statistics -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="stat-card-doctor">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">{{ today_appointments|length }}</div>
+                            <div class="text-muted small">Приёмов сегодня</div>
+                        </div>
+                        <i class="fas fa-calendar-day stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card-doctor">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">{{ recent_visits|length }}</div>
+                            <div class="text-muted small">Последних визитов</div>
+                        </div>
+                        <i class="fas fa-clipboard-list stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card-doctor">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">—</div>
+                            <div class="text-muted small">Пациентов всего</div>
+                        </div>
+                        <i class="fas fa-user-injured stat-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-  <h4>Недавние визиты</h4>
-  <ul>
-    {% for visit in recent_visits %}
-      <li>{{ visit.visit_date }} — {{ visit.patient.full_name }}</li>
-    {% empty %}
-      <li>Нет визитов</li>
-    {% endfor %}
-  </ul>
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-3 p-4 mb-4">
+            <h5 class="mb-3"><i class="fas fa-bolt me-2" style="color: var(--doctor-primary);"></i>Быстрые действия</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'app:search_by_date' %}" class="quick-action-btn">
+                        <i class="fas fa-search"></i>
+                        <div class="fw-bold">Поиск визитов</div>
+                        <small class="text-muted">По дате / пациенту</small>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'app:doctor_dashboard' %}" class="quick-action-btn">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div class="fw-bold">Расписание</div>
+                        <small class="text-muted">Приёмы сегодня</small>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'app:revenue_report' %}" class="quick-action-btn">
+                        <i class="fas fa-chart-bar"></i>
+                        <div class="fw-bold">Отчёты</div>
+                        <small class="text-muted">Финансовые данные</small>
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'app:fastapi_status_page' %}" class="quick-action-btn">
+                        <i class="fas fa-server"></i>
+                        <div class="fw-bold">Статус системы</div>
+                        <small class="text-muted">FastAPI / сервисы</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointments + Recent Visits -->
+        <div class="row g-4">
+            <div class="col-md-7">
+                <div class="bg-white rounded-3 p-4 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-alt me-2" style="color: var(--doctor-primary);"></i>Приёмы сегодня
+                        </h5>
+                        <span class="badge p-2" style="background: var(--doctor-primary);">
+                            {{ today_appointments|length }} записей
+                        </span>
+                    </div>
+                    {% if today_appointments %}
+                        {% for appt in today_appointments %}
+                        <div class="appointment-card">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-bold">
+                                        {% if appt.patient %}
+                                            {{ appt.patient.full_name }}
+                                        {% else %}
+                                            Пациент #{{ appt.patient_id }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted">
+                                        <span class="status-{{ appt.status }}">
+                                            {% if appt.status == 'scheduled' %}Запланирован
+                                            {% elif appt.status == 'completed' %}Завершён
+                                            {% else %}Отменён{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="time-badge">
+                                        <i class="far fa-clock me-1"></i>{{ appt.datetime|time:"H:i" }}
+                                    </span>
+                                    {% if appt.status == 'scheduled' and appt.id %}
+                                    <div class="mt-1">
+                                        <a href="{% url 'app:appointment_detail' appt.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-calendar-week fa-3x mb-3 opacity-50"></i>
+                            <p>Нет приёмов на сегодня</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-md-5">
+                <div class="bg-white rounded-3 p-4 h-100">
+                    <h5 class="mb-3">
+                        <i class="fas fa-history me-2" style="color: var(--doctor-primary);"></i>Недавние визиты
+                    </h5>
+                    {% if recent_visits %}
+                        {% for visit in recent_visits %}
+                        <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                            <div class="rounded-circle p-2 me-3" style="background: #eff6ff;">
+                                <i class="fas fa-tooth" style="color: var(--doctor-primary);"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold">{{ visit.patient.full_name }}</div>
+                                <small class="text-muted">{{ visit.visit_date|date:"d.m.Y" }}</small>
+                            </div>
+                            <a href="{% url 'app:patient_history' visit.patient.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-folder-open"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-clipboard fa-3x mb-3 opacity-50"></i>
+                            <p>Нет недавних визитов</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

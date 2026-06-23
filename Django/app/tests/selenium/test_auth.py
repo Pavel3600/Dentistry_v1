@@ -33,7 +33,9 @@ class TestAuth(StaticLiveServerTestCase):
     def test_login_logout(self):
         """Зарегистрированный пользователь входит в систему и успешно выходит из неё."""
         # Arrange
-        User.objects.create_user(username="logintest", password="loginpass")
+        u = User.objects.create_user(username="logintest", password="loginpass")
+        u.profile.role = 'dentist'
+        u.profile.save()
         wait = WebDriverWait(self.driver, 5)
 
         # Act

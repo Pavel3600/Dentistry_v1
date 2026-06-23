@@ -4,7 +4,7 @@ from typing import Optional
 
 # Базовый класс для всех Out-схем с правильной сериализацией datetime
 class OutBase(BaseModel):
-    model_config = ConfigDict(from_attributes=True, json_encoders={datetime: lambda v: v.isoformat() if isinstance(v, datetime) else v})
+    model_config = ConfigDict(from_attributes=True)
 
 # ---------- Patient ----------
 class PatientBase(BaseModel):
